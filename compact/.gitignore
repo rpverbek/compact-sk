@@ -1,4 +1,11 @@
+# ignore config file
 .vscode/
 .idea/
 .ipynb_checkpoints/
 __pycache__/
+*.egg-info
+
+# ignore internal/external libraries
+hapi-master/
+src/elucidata-resources/
+src/elucidata-tools/
