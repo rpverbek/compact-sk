@@ -8,3 +8,4 @@ scikit-learn
 seaborn
 tqdm
 plotly
+umap-learn
