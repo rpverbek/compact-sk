@@ -1,0 +1,10 @@
+# for python version 3.8
+-e src
+
+numpy
+matplotlib
+pandas
+scikit-learn
+seaborn
+tqdm
+plotly
