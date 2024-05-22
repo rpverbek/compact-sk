@@ -9,3 +9,4 @@ seaborn
 tqdm
 plotly
 umap-learn
+git+ssh://git@gitlab.sirris.be/elucidata/elucidata_resources.git
