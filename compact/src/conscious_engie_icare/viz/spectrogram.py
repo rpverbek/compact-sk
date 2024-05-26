@@ -11,6 +11,7 @@ from conscious_engie_icare import util
 import matplotlib.colors as colors
 import re
 import numpy as np
+from scipy.signal import stft, welch, periodogram
 
 
 def show_spectrogram(df, timestamp_col="timestamp", frequency_cols=None,
@@ -144,3 +145,30 @@ def _plot_2d(df, x, y, **kwargs):
             im, ax = show_spectrogram(df_plot, ax=ax, **kwargs)
             ax.set_title(f"{xval}, {yval} (n={len(df_plot)})")
     return fig, axes
+
+
+def plot_stft(df, var, nperseg=256, noverlap=None, nfft=None, fs=1):
+    f, t, Zxx = stft(df[var], nperseg=nperseg, noverlap=noverlap, nfft=nfft, fs=fs)
+    plt.pcolormesh(t, f, np.abs(Zxx))
+    plt.title(f'STFT Magnitude {var}')
+    plt.ylabel('Frequency [Hz]')
+    plt.xlabel('Time [sec]')
+    plt.show()
+
+
+def plot_periodogram(df, var, fs=1):
+    f, Pxx = periodogram(df[var], fs=fs)
+    plt.semilogy(f, Pxx)
+    plt.title(f'Periodogram {var}')
+    plt.xlabel('frequency [Hz]')
+    plt.ylabel('PSD amplitude')
+    plt.show()
+
+
+def plot_welch(df, var, nperseg=256, noverlap=None, nfft=None, fs=1, ax=None, legend=None):
+    f, Pxx = welch(df[var], nperseg=nperseg, noverlap=noverlap, nfft=nfft, fs=fs)
+    plt.semilogy(f, Pxx)
+    plt.title(f'Welch Power Spectral Density {var}')
+    plt.xlabel('frequency [Hz]')
+    plt.ylabel('PSD amplitude')
+    # plt.show()
