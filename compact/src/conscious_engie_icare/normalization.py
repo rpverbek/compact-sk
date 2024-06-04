@@ -10,7 +10,7 @@ def no_normalize(df_, band_cols):
 
 
 def normalize_1(df_, band_cols):
-    """ The given decomposition matrix V with row v_i is normalized as v_ij' = v_ij / sum(V). """
+    """ The given decomposition matrix V with row v_i is normalized as v_ij' = v_ij / sum(v_i). """
     df_V_normalized = df_[band_cols]
     sum_ = df_V_normalized.sum(axis=1)
     df_V_normalized = pd.DataFrame([df_V_normalized[col].div(sum_) for col in df_V_normalized.columns]).T.dropna()
