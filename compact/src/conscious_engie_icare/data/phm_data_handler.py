@@ -12,16 +12,29 @@ from scipy.signal import stft, welch
 import pickle
 import glob
 
-
+# train set
 BASE_PATH_HEALTHY = os.path.join('..', 'data', 'Data_Challenge_PHM2023_training_data', 'Pitting_degradation_level_0')
 FILE_NAMES_HEALTHY = glob.glob(os.path.join(BASE_PATH_HEALTHY, '*.txt'))
+
+# cached results
 # previous caching folder:
 # CACHING_FOLDER_NAME = os.path.join('..', 'data', 'CACHED_RESULTS_300124')
 CACHING_FOLDER_NAME = os.path.join('..', 'data', 'CACHED_RESULTS_030624')
-FPATH_DF_ORDERS_TRAIN_FOLDS = os.path.join(CACHING_FOLDER_NAME, f'df_orders_train_folds.pkl')
-FPATH_META_DATA_TRAIN_FOLDS = os.path.join(CACHING_FOLDER_NAME, f'meta_data_train_folds.pkl')
-FPATH_DF_V_TRAIN_FOLDS = os.path.join(CACHING_FOLDER_NAME, f'df_V_train_folds.pkl')
+FPATH_DF_ORDERS_TRAIN_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'df_orders_train_folds.pkl')
+FPATH_META_DATA_TRAIN_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'meta_data_train_folds.pkl')
+FPATH_DF_V_TRAIN_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'df_V_train_folds.pkl')
+FPATH_UNIQUE_NAME_MAPPING_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'unique_name_mapping_folds.pkl')
+FPATH_FINGERPRINTS_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'fingerprints_folds.pkl')
+FPATH_MODEL_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'model_folds.pkl')
+FPATH_DISTANCES = os.path.join(CACHING_FOLDER_NAME, 'distance_folds')
 
+# test set
+PITTING_LEVELS = [1, 2, 3, 4, 6, 8]
+FPATH_DATA_HEALTHY_TEST_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'data_healthy_test_folds.pkl')
+BASE_PATHS_TEST = [os.path.join('..', 'data', 'Data_Challenge_PHM2023_training_data', 
+                                f'Pitting_degradation_level_{pl}') for pl in PITTING_LEVELS]
+FPATH_DF_ORDERS_TEST_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'df_orders_test_folds.pkl')
+FPATH_META_DATA_TEST_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'meta_data_test_folds.pkl')
 
 def fetch_and_unzip_data(fname="Data_Challenge_PHM2023_training_data", force=False):
     """ Fetch and unzip data from the remote server. """
