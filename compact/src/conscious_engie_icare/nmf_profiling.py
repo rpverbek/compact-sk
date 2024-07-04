@@ -10,12 +10,74 @@ from sklearn.decomposition import NMF
 import numpy as np
 
 
+def extract_nmf_incremental(df_V, max_n_components, timestamps=None, verbose=True):
+
+    V = df_V.to_numpy()
+    range_components = range(1, max_n_components+1)[::-1]
+    tqdm_description = 'Fitting NMF with varying number of components'
+    tqdm_range_components = tqdm(range_components, desc=tqdm_description, disable=(not verbose))
+
+    list_models = []
+    previous_W = None
+    previous_H = None
+    for _n_components in tqdm_range_components:
+        if previous_W is None or previous_H is None:
+            # For the first (largest) decomposition, use the default 'nndsvd' initialization
+            nmf = NMF(n_components=_n_components, init='nndsvd', max_iter=1000, random_state=42)
+            W = nmf.fit_transform(V)
+            H = nmf.components_
+        else:
+            # For subsequent decompositions, use the results of the previous decomposition for warm start
+            nmf = NMF(n_components=_n_components, init='custom', max_iter=1000, random_state=42)
+            W = previous_W[:, :_n_components].copy(order='C')  # Use only the first n_components columns
+            H = previous_H[:_n_components, :].copy(order='C')  # Use only the first n_components rows
+
+            W = nmf.fit_transform(V, W=W, H=H)
+            H = nmf.components_
+        V_reconstructed = nmf.inverse_transform(W)
+
+        model_dict = {
+            # number of components
+            'n_components': _n_components,
+            # trained NMF-model
+            'nmf': Pipeline([('nmf', nmf)]),
+            # decomposition matrix V, and approximation matrices W and H
+            'V': V, 'W': W, 'H': pd.DataFrame(H),
+            # timestamps for V
+            'V_timestamps': timestamps,
+            # reconstructed decomposition matrix
+            'V_reconstructed': V_reconstructed,
+            # coefficient of determination (average)
+            'R2_mean': r2_score(V, V_reconstructed, multioutput='uniform_average'),
+            # coefficient of determination (per sample)
+            'R2': r2_score(V.T, V_reconstructed.T, multioutput='raw_values'),
+            # coefficient of determination (per feature)
+            'R2_feature': r2_score(V, V_reconstructed, multioutput='raw_values'),
+            # mean squared error (average)
+            'MSE_mean': mean_squared_error(V, V_reconstructed),
+            # mean squared error (per sample)
+            'MSE': mean_squared_error(V.T, V_reconstructed.T, multioutput='raw_values'),
+            # reconstruction error expressed as Frobenius norm
+            'reconstruction_error': nmf.reconstruction_err_
+        }
+
+        list_models.append(model_dict)
+
+        # Update previous_W and previous_H for the next iteration
+        previous_W = W
+        previous_H = H
+    list_models.reverse()
+    df_models = pd.DataFrame(list_models)
+    return df_models
+
+
 def extract_nmf_per_number_of_component(df_V, n_components=60, timestamps=None, verbose=True):
     """ Perform nmf with varying number of components.
 
-    :param df: Dataframe with (normalized) decomposition matrix V.
+    :param df_V: Dataframe with (normalized) decomposition matrix V.
     :param n_components: Integer with maximum number of components that should be extracted for NMF.
     :param timestamps: Pandas series with timestamps corresponding to rows in feature space.
+    :param verbose:
     :return: Dataframe where each row corresponds to a different number of components and the columns contain
         W and H, as well as some other model specific parameters.
     """
@@ -23,7 +85,7 @@ def extract_nmf_per_number_of_component(df_V, n_components=60, timestamps=None, 
     range_components = range(1, n_components)
     tqdm_description = 'Fitting NMF with varying number of components'
     tqdm_range_components = tqdm(range_components, desc=tqdm_description, disable=(not verbose))
-    list_models = [extract_NMF(V, n_components=n_components, timestamps=timestamps.to_numpy()) for n_components in tqdm_range_components]
+    list_models = [extract_NMF(V, n_components=_n_components, timestamps=timestamps.to_numpy()) for _n_components in tqdm_range_components]
     df_models = pd.DataFrame(list_models)
     return df_models
 
@@ -35,6 +97,7 @@ def extract_NMF(V, n_components=60, timestamps=None):
 
     :param V: Numpy array with (normalized) decomposition matrix V.
     :param n_components: Integer with maximum number of components that should be extracted for NMF.
+    :param timestamps:
     :return: Dictionary containing W and H, as well as some other model specific parameters.
     """
     nmf = NMF(n_components=n_components, init='nndsvd', max_iter=1000, random_state=42)  # TODO: compare solvers
