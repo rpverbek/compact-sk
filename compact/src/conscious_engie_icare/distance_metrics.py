@@ -7,6 +7,7 @@ from scipy.spatial.distance import mahalanobis
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
 def frobenius_norm(a, b):
     """ Frobenius norm of the differences. """
     return np.linalg.norm(a.sort_index() - b.sort_index(), ord='fro')
@@ -79,7 +80,8 @@ def visualize_distances_for_om(df_dist_train_, df_dist_online_, om='A'):
     return fig, ax
 
 
-def plot_distance_to_fingerprint(df_dist_train_, idx, df_dist_online_, distribution_of_training_set=True, super_impose_online_dist=False, metric='frobenius_norm'):
+def plot_distance_to_fingerprint(df_dist_train_, idx, df_dist_online_, distribution_of_training_set=True,
+                                 super_impose_online_dist=False, metric='frobenius_norm'):
     # plot underlying distribution
     df_dist_ = df_dist_train_ if distribution_of_training_set else df_dist_online_
     g = sns.displot(data=df_dist_, x=metric, col="om", col_wrap=4, height=2, aspect=4, bins=50, kind="hist");
