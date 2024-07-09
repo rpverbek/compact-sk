@@ -2,7 +2,6 @@
 # owner: FFNG
 
 import zipfile
-from elucidata.resources.pipeline import DownloadFile
 import posixpath
 import os
 import pandas as pd
@@ -36,23 +35,18 @@ BASE_PATHS_TEST = [os.path.join('..', 'data', 'Data_Challenge_PHM2023_training_d
 FPATH_DF_ORDERS_TEST_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'df_orders_test_folds.pkl')
 FPATH_META_DATA_TEST_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'meta_data_test_folds.pkl')
 
+
 def fetch_and_unzip_data(fname="Data_Challenge_PHM2023_training_data", force=False):
     """ Fetch and unzip data from the remote server. """
-    fname_zip = fname + '.zip'
+    fname_zip = f'{fname}.zip'
     local_path_zipped = os.path.join('..', 'data', fname_zip)
     local_path_unzipped = os.path.join('..', 'data', fname)
 
-    if not os.path.exists(fname):
-        # download zipped data (if not already present locally)
-        remote_path = posixpath.join('outputs', 'FAIR2', 'compact', 'phm23', fname_zip)
-        local_path = os.path.join('..', 'data', fname_zip)
-        DownloadFile(local_path_zipped, remote_path).make(force=force)
-
-        if not os.path.exists(os.path.join('..', 'data', fname)):
-            # unzip data
-            print('Unzipping data...')
-            with zipfile.ZipFile(local_path_zipped, 'r') as zip_ref:
-                zip_ref.extractall(os.path.join('..', 'data'))
+    if not os.path.exists(local_path_unzipped):
+        assert os.path.exists(local_path_zipped), f'Could not find {local_path_zipped}'
+        print('Unzipping data...')
+        with zipfile.ZipFile(local_path_zipped, 'r') as zip_ref:
+            zip_ref.extractall(os.path.join('..', 'data'))
 
     return local_path_unzipped
 
@@ -75,19 +69,6 @@ def extract_process_parameters(file_path, use_train_data_for_validation=True):
         return int(v_value[1:]), int(n_value.split('.')[0][:-1]), int(sample_number)
 
 
-class timeout:
-    def __init__(self, seconds=1, error_message='Timeout'):
-        self.seconds = seconds
-        self.error_message = error_message
-    def handle_timeout(self, signum, frame):
-        raise TimeoutError(self.error_message)
-    def __enter__(self):
-        signal.signal(signal.SIGALRM, self.handle_timeout)
-        signal.alarm(self.seconds)
-    def __exit__(self, type, value, traceback):
-        signal.alarm(0)
-
-
 def load_data(fnames, use_train_data_for_validation=True, base_path=BASE_PATH_HEALTHY, **kwargs):
     """ Load the complete data set.
 
@@ -100,14 +81,11 @@ def load_data(fnames, use_train_data_for_validation=True, base_path=BASE_PATH_HE
     data = []
     for fn in tqdm(fnames):
         rpm, torque, run = extract_process_parameters(fn, use_train_data_for_validation=use_train_data_for_validation)
-        try:
-            with timeout(seconds=4):
-                if use_train_data_for_validation:
-                    df = load_train_data(rpm, torque, run, base_path=base_path) 
-                else:
-                    df = load_test_data(rpm, torque, run, base_path=base_path)
-        except TimeoutError:
-            print(f'timed out loading {fn}')
+        if use_train_data_for_validation:
+            df = load_train_data(rpm, torque, run, base_path=base_path)
+        else:
+            df = load_test_data(rpm, torque, run, base_path=base_path)
+
         f, t, stft_x = stft(df['x'], **kwargs)
         f, t, stft_y = stft(df['y'], **kwargs)
         f, t, stft_z = stft(df['z'], **kwargs)
