@@ -1,13 +1,15 @@
 # for python version 3.8
 -e src
 
-numpy
-matplotlib
-pandas
-scikit-learn
-seaborn
-tqdm
-plotly
-umap-learn
-git+ssh://git@gitlab.sirris.be/elucidata/elucidata_resources.git
-nbformat
+joblib==1.3.2
+matplotlib==3.8.2
+nbformat==5.9.2
+numpy==1.26.2
+pandas==2.0.0
+plotly==5.18.0
+scikit-learn==1.3.2
+scipy==1.11.4
+seaborn==0.13.0
+tensorflow==2.16.1
+tqdm==4.66.1
+kneed==0.8.5

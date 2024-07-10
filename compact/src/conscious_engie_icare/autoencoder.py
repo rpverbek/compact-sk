@@ -10,8 +10,8 @@ EPOCHS = 100
 
 
 class Autoencoder:
-    def __init__(self, input_dim, encoding_dim):
-        self.input_dim = input_dim
+    def __init__(self, _input_dim, encoding_dim):
+        self.input_dim = _input_dim
         self.encoding_dim = encoding_dim
         self.autoencoder = tf.keras.models.Sequential([
             # deconstruct / encode
