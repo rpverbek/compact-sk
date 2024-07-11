@@ -10,3 +10,4 @@ __pycache__/
 hapi-master/
 src/elucidata-resources/
 src/elucidata-tools/*.csv
+work/uc_scania/*.csv
