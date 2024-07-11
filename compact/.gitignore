@@ -9,4 +9,4 @@ __pycache__/
 # ignore internal/external libraries
 hapi-master/
 src/elucidata-resources/
-src/elucidata-tools/
+src/elucidata-tools/*.csv
