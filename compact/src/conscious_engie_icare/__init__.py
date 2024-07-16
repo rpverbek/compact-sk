@@ -9,7 +9,6 @@
 """
 
 import os
-#from elucidata import resources
 import posixpath
 from pathlib import Path
 import pkgutil as _pkgutil

@@ -10,7 +10,6 @@ import pandas as pd
 from sklearn.decomposition import PCA
 import matplotlib as mpl
 import matplotlib.dates as mdates
-from matplotlib.ticker import NullFormatter
 import matplotlib.ticker as ticker
 import re
 import numpy as np
@@ -19,6 +18,8 @@ from ipywidgets import interact, Layout
 import ipywidgets as widgets
 from copy import deepcopy
 from matplotlib.gridspec import GridSpec
+
+previous_value_threshold = 95
 
 
 def illustrate_nmf_components_for_paper(V, explained_variance_ratio, df_nmf_models, band_cols,
@@ -202,22 +203,16 @@ def get_controller(controller):
     return controller_out
 
 
-def illustrate_nmf_components_interactive(df_V_train_folds, df_nmf_models_folds):
+def illustrate_nmf_components_interactive(df_V_train, df_nmf_models):
     global previous_value_threshold
     previous_value_threshold = 95
 
-    max_n_components = len(df_nmf_models_folds[0])
+    saved_values = {}
 
-    def make_plot(fold, criterium, n_components_range, **extra_options):
+    max_n_components = len(df_nmf_models)
+
+    def make_plot(criterium, n_components_range, **extra_options):
         global previous_value_threshold
-        df_V_train_ = df_V_train_folds[fold]
-        df_nmf_models_ = df_nmf_models_folds[fold]
-
-        # calculate explained variance
-        pca = PCA(n_components=max_n_components, random_state=42)
-        pca.fit(df_V_train_)
-        explained_variance_ratio = pca.explained_variance_ratio_.cumsum()
-        explained_variance_ratio = explained_variance_ratio[:max_n_components] * 100
 
         if 'min_explained_variance' in extra_options.keys():
             threshold = extra_options['min_explained_variance']
@@ -229,19 +224,21 @@ def illustrate_nmf_components_interactive(df_V_train_folds, df_nmf_models_folds)
         n_components_variance, n_components_knee_pca, n_components_knee_nmf = get_number_of_components(
             explained_variance_ratio,
             threshold,
-            df_nmf_models_)
+            df_nmf_models)
 
         if criterium == 'explained-variance':
             n_components = n_components_variance
-        if criterium == 'knee-point':
+        elif criterium == 'knee-point':
             n_components = max(n_components_knee_nmf, n_components_knee_pca)
-        if criterium == 'both':
+        elif criterium == 'both':
             n_components = max(n_components_variance, n_components_knee_nmf, n_components_knee_pca)
         else:
             n_components = 5
 
         n_components = max(n_components, n_components_range[0])
         n_components = min(n_components, n_components_range[1])
+
+        saved_values['n_components'] = n_components
 
         components_per_row = 3
         n_rows_first_plot = 3
@@ -256,8 +253,8 @@ def illustrate_nmf_components_interactive(df_V_train_folds, df_nmf_models_folds)
         # identical to ax1 = plt.subplot(gs.new_subplotspec((0, 0), colspan=3))
 
         ax1.plot(np.arange(1, max_n_components + 1), explained_variance_ratio, 'ko-')
-        ax2.plot(df_nmf_models_['n_components'],
-                 df_nmf_models_['reconstruction_error'], 'ko-')
+        ax2.plot(df_nmf_models['n_components'],
+                 df_nmf_models['reconstruction_error'], 'ko-')
 
         if criterium in ('both', 'explained-variance'):
             ax1.axhline(y=extra_options['min_explained_variance'], linestyle=':', color='g')
@@ -276,14 +273,14 @@ def illustrate_nmf_components_interactive(df_V_train_folds, df_nmf_models_folds)
 
         ax1.legend(loc='lower right', fontsize='small')
 
-        row = df_nmf_models_[df_nmf_models_.n_components == n_components].iloc[0]
+        row = df_nmf_models[df_nmf_models.n_components == n_components].iloc[0]
         H = row.H
 
         axes_components = []
 
-        column_names = df_V_train_.columns[0]
+        column_names = df_V_train.columns[0]
         offset = 0.5 * (extract_upper_limit(column_names) - extract_lower_limit(column_names))
-        all_x_label_names = [extract_lower_limit(col) + offset for col in df_V_train_.columns]
+        all_x_label_names = [extract_lower_limit(col) + offset for col in df_V_train.columns]
         plot_x_ticks = [0, 10, 20, 30, 40, 49]
         plot_x_labels = [all_x_label_names[idx] for idx in plot_x_ticks]
 
@@ -308,12 +305,13 @@ def illustrate_nmf_components_interactive(df_V_train_folds, df_nmf_models_folds)
 
         fig.show()
 
-    def get_additional_options(fold, criterium, n_components_range):
+    def get_additional_options(criterium, n_components_range):
         global previous_value_threshold
+
         threshold = 95 if previous_value_threshold is None else previous_value_threshold
         if criterium in ('explained-variance', 'both'):
             controller_explained_variance = get_controller({'widget': 'FloatSlider',
-                                                            'min': 0,
+                                                            'min': min_variance,
                                                             'max': 100,
                                                             'value': threshold,
                                                             'description': 'Explained PCA variance threshold'})
@@ -322,9 +320,16 @@ def illustrate_nmf_components_interactive(df_V_train_folds, df_nmf_models_folds)
             extra_options = {}
 
         def _make_plot(**_extra_options):
-            make_plot(fold, criterium, n_components_range, **_extra_options)
+            make_plot(criterium, n_components_range, **_extra_options)
 
         interact(_make_plot, **extra_options)
+
+    # calculate explained variance
+    pca = PCA(n_components=max_n_components, random_state=42)
+    pca.fit(df_V_train)
+    explained_variance_ratio = pca.explained_variance_ratio_.cumsum()
+    explained_variance_ratio = explained_variance_ratio[:max_n_components] * 100
+    min_variance = np.ceil(np.min(explained_variance_ratio))
 
     controller_selection_criterium = get_controller({'widget': 'Dropdown',
                                                      'options': [('Explained variance', 'explained-variance'),
@@ -339,14 +344,10 @@ def illustrate_nmf_components_interactive(df_V_train_folds, df_nmf_models_folds)
                                                     'value': [2, 10],
                                                     'description': 'Range of acceptable number of components for NMF'})
 
-    controller_fold = get_controller({'widget': 'IntSlider',
-                                      'min': 0,
-                                      'max': len(df_V_train_folds),
-                                      'value': 0,
-                                      'description': 'Fold number'})
-
-    interact(get_additional_options, fold=controller_fold, criterium=controller_selection_criterium,
+    interact(get_additional_options, criterium=controller_selection_criterium,
              n_components_range=controller_n_components_range)
+
+    return saved_values
 
 
 def illustrate_nmf_components(V, explained_variance_ratio, df_nmf_models, band_cols, min_explained_variance=90,
@@ -370,7 +371,7 @@ def illustrate_nmf_components(V, explained_variance_ratio, df_nmf_models, band_c
     ncols = V.shape[1]
     ax.set_title(f"V: {nrows} x {ncols}", fontsize=None)
     # V.columns = BAND_COLUMNS
-    im = ax.imshow(
+    ax.imshow(
         V.sort_index(),
         cmap=cmap,
         aspect='auto',
@@ -531,7 +532,6 @@ def plot_nr_of_entries(df):
 
 
 def plot_nr_of_entries2(df, ax=None, **plot_kwargs):
-    # TODO refactor
     df = df.reset_index()
 
     if ax is None:
@@ -547,12 +547,12 @@ def plot_nr_of_entries2(df, ax=None, **plot_kwargs):
 
 
 def plot_agg_per_location(df, rule='W', hue="location", ax=None):
-    # TODO refactor
     """ Plot aggregated value per location.
 
     Args:
         df (pd.DataFrame): Data with entries for speed, pressure or flow.
         rule (str): Aggregation rule. Default: 'W' for aggregating over week.
+        hue:
         ax (matplotlib axis): axis to plot on.
 
     Returns:
@@ -565,10 +565,10 @@ def plot_agg_per_location(df, rule='W', hue="location", ax=None):
         """Returns intersection between two lists as set."""
         return list(set(lst1) & set(lst2))
 
-    vars = ['speed', 'pressure', 'flow']
-    var_name_list = intersection(vars, df.columns)
+    variables = ['speed', 'pressure', 'flow']
+    var_name_list = intersection(variables, df.columns)
     if len(var_name_list) != 1:
-        raise ValueError(f"df must contain exactly one of {vars}.")
+        raise ValueError(f"df must contain exactly one of {variables}.")
     var_name = var_name_list[0]
 
     # prepare data
@@ -630,7 +630,7 @@ def plot_process_view_for_paper(process_view_with_results, cavitation_risk, df_p
     ax.set_xlim(pd.to_datetime(start_time_), pd.to_datetime(stop_time_))
     ax.set_ylim([0.2, 0.8])
     ax.set_ylabel('certainty score')
-    ax = x_labels(ax, minor_day_interval=minor_day_interval, major_day_interval=major_day_interval)
+    x_labels(ax, minor_day_interval=minor_day_interval, major_day_interval=major_day_interval)
 
     # Second axis: known samples
     ax = axes[1]
@@ -683,11 +683,7 @@ def x_labels(ax, minor_day_interval=1, major_day_interval=7):
     ax.xaxis.set_minor_locator(mdates.DayLocator(interval=minor_day_interval))
     ax.xaxis.set_minor_formatter(mdates.DateFormatter('%d-%m-%Y'))
     ax.xaxis.set_major_locator(mdates.DayLocator(interval=major_day_interval))
-    #ax.xaxis.set_major_formatter(
-    #    mdates.DateFormatter('%d-%m-%Y')
-    #)
-    #ax.xaxis.set_major_formatter(
-    #    mdates.ConciseDateFormatter(ax.xaxis.get_major_locator()))
+
     for label in ax.get_xticklabels(which='major'):
         label.set(rotation=30, horizontalalignment='right')
     return ax
