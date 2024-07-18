@@ -687,3 +687,67 @@ def x_labels(ax, minor_day_interval=1, major_day_interval=7):
     for label in ax.get_xticklabels(which='major'):
         label.set(rotation=30, horizontalalignment='right')
     return ax
+
+
+def show_fingerprints(model, df_V_train, meta_data_train):
+
+    def make_plot(rpm, torque, run):
+        n_components = df_W.shape[1] - 5
+        if run == 'mean':
+            df_ = df_W[(df_W['rotational speed [RPM]'] == rpm) & (df_W['torque [Nm]'] == torque)]
+            df_ = df_[list(range(n_components)) + ['direction']].groupby('direction').mean()
+            fig, ax = plt.subplots()
+            sns.heatmap(df_, annot=True, fmt=".3f", ax=ax, cmap='Blues', vmin=0, vmax=0.1, cbar=False)
+            ax.set_title(f'Vibration fingerprint @ {rpm} rpm, {torque} Nm')
+            ax.set_xlabel('component')
+        else:
+            df_ = df_W[(df_W['rotational speed [RPM]'] == rpm) &
+                                     (df_W['torque [Nm]'] == torque) &
+                                     (df_W['sample_id'] == run)]
+            df_ = df_.set_index('direction')
+            fig, ax = plt.subplots(figsize=(8, 4))
+            sns.heatmap(df_[list(range(n_components))], annot=True, fmt=".3f", ax=ax, cmap='Blues', vmin=0, vmax=0.1,
+                        cbar=False)
+            ax.set_title(f'Measurement {run} @ {rpm} rpm, {torque} Nm')
+            ax.set_xlabel('component')
+        fig.show()
+
+    n_components = model.W.shape[1]
+    W_train = model.W.reshape(-1, n_components)
+    df_W_train = pd.DataFrame(W_train)
+    df_W_train.index = df_V_train.index
+    df_W_train['direction'] = meta_data_train['direction']
+
+    # add operating mode (OM)
+    df_W = pd.merge(df_W_train, meta_data_train.drop(columns=['direction']), left_index=True,
+                                  right_index=True)
+
+    possible_rpms = sorted(df_W['rotational speed [RPM]'].unique())
+
+    controller_rpm = get_controller({'widget': 'Dropdown',
+                                                     'options': [(_rpm, _rpm) for _rpm in possible_rpms],
+                                                     'value': possible_rpms[0],
+                                                     'description': 'Which RPM'})
+
+    possible_torques = sorted(df_W['torque [Nm]'].unique())
+
+    controller_torque = get_controller({'widget': 'Dropdown',
+                                                    'options': [(_torque, _torque) for _torque in possible_torques],
+                                                     'value': possible_torques[0],
+                                                     'description': 'Which torque'})
+
+
+    def get_additional_options(rpm, torque):
+        df_selected = df_W[(df_W['rotational speed [RPM]'] == rpm) & (df_W['torque [Nm]'] == torque)]
+        possible_runs = ['mean'] + sorted(df_selected['sample_id'].unique())
+
+        controller_run = get_controller({'widget': 'Dropdown',
+                                         'options': [(_run, _run) for _run in possible_runs],
+                                         'value': possible_runs[0],
+                                         'description': 'Which run'})
+
+        def _make_plot(run):
+            make_plot(rpm, torque, run)
+        interact(_make_plot, run=controller_run)
+
+    interact(get_additional_options, rpm=controller_rpm, torque=controller_torque)
