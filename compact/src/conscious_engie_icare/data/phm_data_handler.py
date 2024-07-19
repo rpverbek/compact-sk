@@ -90,7 +90,7 @@ def load_data(fnames, use_train_data_for_validation=True, base_path=BASE_PATH_HE
     :return: _description_
     """    
     data = []
-    for fn in tqdm(fnames):
+    for fn in fnames:
         rpm, torque, run = extract_process_parameters(fn, use_train_data_for_validation=use_train_data_for_validation)
         if use_train_data_for_validation:
             df = load_train_data(rpm, torque, run, base_path=base_path)
