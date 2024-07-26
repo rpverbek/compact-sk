@@ -90,4 +90,4 @@ def normalize_by_total_count(df_, list_of_sensor_bins):
         for sb in sensor_bins:
             df_[sb] = df_[sb] / sum
         sums.append(sum)
-    return df_, sum
+    return df_, sums

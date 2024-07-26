@@ -7,6 +7,7 @@ import matplotlib as mpl
 import os
 from tqdm import tqdm
 import numpy as np
+from ydata_profiling import ProfileReport
 
 
 FPATH_PROFILING_REPORTS = os.path.join('profiling_reports')
