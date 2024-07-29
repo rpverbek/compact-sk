@@ -3,10 +3,43 @@
 
 import pandas as pd
 import os
+from conscious_engie_icare import LOCAL_PATH_NMF_MODELS
+from conscious_engie_icare.normalization import no_normalize, normalize_1, normalize_2, normalize_3
+
+FOLDER_MODELS = os.path.join(LOCAL_PATH_NMF_MODELS, 'nmf-issue-28-02-23')
 
 
 LOCAL_PATH_DATA = os.path.join('..', '..', 'work', 'uc_feedwater_pumps')  # TODO
 LOCAL_PATH_OPERATIONAL = os.path.join(LOCAL_PATH_DATA, 'operational_data')
+FOLDER_MODELS = os.path.join(LOCAL_PATH_NMF_MODELS, 'nmf-issue-28-02-23')
+PUMPS = [1, 2, 3]
+SETUP = {
+    'idx_setup': 1, 'normalization': normalize_1,  'window_size': 2, 
+    'window_steps': 0.25, 'start': 0.25, 'stop': 30.25, 'n_windows': 120, 
+    'peak_correction': False, 'per_sensor': False, 'path_name': 'setup-1.csv', 
+    'model_name': 'model-1a.pickel'
+}
+
+
+def get_and_preprocess_data(pumps=PUMPS):
+    # Load contextual data
+    df_contextual = pd.concat([load_and_preprocess_operational_features(pump) for pump in pumps])
+    meta_columns = ['timestamp', 'pump']
+    endogenous_columns = [
+        'velocity <v-MP> [RPM]',
+        'p_delta_pressure_inlet <deltap-filter-MP> [barg]', 'p_in [barg]',
+        'p_out <pout-MP> [barg]', 'p_delta [barg]', 'p_feedwater_tank <p-FWT> [barg]', 
+        't_inlet <T-in-MP> [Celsius]', 't_fwt <T-fwt> [Celsius]'
+    ]
+    include_columns = meta_columns + endogenous_columns
+    df_contextual = df_contextual[include_columns]
+    
+    # Load vibration data
+    FNAME = os.path.join(FOLDER_MODELS, SETUP['path_name'])
+    df_V = pd.read_csv(FNAME, parse_dates=['timestamp'], index_col=0)
+    df_V['pump'] = df_V['pump'].replace({11: 1, 12: 2, 13: 3})
+
+    return df_V, df_contextual
 
 
 def load_and_preprocess_operational_features(pump, base_path=LOCAL_PATH_OPERATIONAL):
