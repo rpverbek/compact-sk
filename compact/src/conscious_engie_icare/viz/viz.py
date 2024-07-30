@@ -18,6 +18,9 @@ from ipywidgets import interact, Layout
 import ipywidgets as widgets
 from copy import deepcopy
 from matplotlib.gridspec import GridSpec
+from conscious_engie_icare.data.phm_data_handler import load_train_data, FILE_NAMES_HEALTHY, BASE_PATH_HEALTHY
+import glob
+import os
 
 previous_value_threshold = 95
 
@@ -692,21 +695,21 @@ def x_labels(ax, minor_day_interval=1, major_day_interval=7):
 def show_fingerprints(model, df_V_train, meta_data_train):
 
     def make_plot(rpm, torque, run):
-        n_components = df_W.shape[1] - 5
+        _n_components = df_W.shape[1] - 5
         if run == 'mean':
             df_ = df_W[(df_W['rotational speed [RPM]'] == rpm) & (df_W['torque [Nm]'] == torque)]
-            df_ = df_[list(range(n_components)) + ['direction']].groupby('direction').mean()
+            df_ = df_[list(range(_n_components)) + ['direction']].groupby('direction').mean()
             fig, ax = plt.subplots()
             sns.heatmap(df_, annot=True, fmt=".3f", ax=ax, cmap='Blues', vmin=0, vmax=0.1, cbar=False)
             ax.set_title(f'Vibration fingerprint @ {rpm} rpm, {torque} Nm')
             ax.set_xlabel('component')
         else:
             df_ = df_W[(df_W['rotational speed [RPM]'] == rpm) &
-                                     (df_W['torque [Nm]'] == torque) &
-                                     (df_W['sample_id'] == run)]
+                       (df_W['torque [Nm]'] == torque) &
+                       (df_W['sample_id'] == run)]
             df_ = df_.set_index('direction')
             fig, ax = plt.subplots(figsize=(8, 4))
-            sns.heatmap(df_[list(range(n_components))], annot=True, fmt=".3f", ax=ax, cmap='Blues', vmin=0, vmax=0.1,
+            sns.heatmap(df_[list(range(_n_components))], annot=True, fmt=".3f", ax=ax, cmap='Blues', vmin=0, vmax=0.1,
                         cbar=False)
             ax.set_title(f'Measurement {run} @ {rpm} rpm, {torque} Nm')
             ax.set_xlabel('component')
@@ -719,23 +722,21 @@ def show_fingerprints(model, df_V_train, meta_data_train):
     df_W_train['direction'] = meta_data_train['direction']
 
     # add operating mode (OM)
-    df_W = pd.merge(df_W_train, meta_data_train.drop(columns=['direction']), left_index=True,
-                                  right_index=True)
+    df_W = pd.merge(df_W_train, meta_data_train.drop(columns=['direction']), left_index=True, right_index=True)
 
     possible_rpms = sorted(df_W['rotational speed [RPM]'].unique())
 
     controller_rpm = get_controller({'widget': 'Dropdown',
-                                                     'options': [(_rpm, _rpm) for _rpm in possible_rpms],
-                                                     'value': possible_rpms[0],
-                                                     'description': 'Which RPM'})
+                                     'options': [(_rpm, _rpm) for _rpm in possible_rpms],
+                                     'value': possible_rpms[0],
+                                     'description': 'Which RPM'})
 
     possible_torques = sorted(df_W['torque [Nm]'].unique())
 
     controller_torque = get_controller({'widget': 'Dropdown',
-                                                    'options': [(_torque, _torque) for _torque in possible_torques],
-                                                     'value': possible_torques[0],
-                                                     'description': 'Which torque'})
-
+                                        'options': [(_torque, _torque) for _torque in possible_torques],
+                                        'value': possible_torques[0],
+                                        'description': 'Which torque'})
 
     def get_additional_options(rpm, torque):
         df_selected = df_W[(df_W['rotational speed [RPM]'] == rpm) & (df_W['torque [Nm]'] == torque)]
@@ -751,3 +752,79 @@ def show_fingerprints(model, df_V_train, meta_data_train):
         interact(_make_plot, run=controller_run)
 
     interact(get_additional_options, rpm=controller_rpm, torque=controller_torque)
+
+
+def plot_distances_interactive(df_dist_offline):
+
+    def make_plot(om, distance):
+        # distance = 'cosine_distance'
+        fig, ax = plt.subplots(figsize=(8, 4))
+        df_om = df_dist_offline[df_dist_offline['om'] == om]
+        sns.histplot(df_om, x=distance, ax=ax)
+        ax.set_xlabel(distance.replace('_', ' ').capitalize())
+        ax.set_title(f'Operating mode {om}')
+        fig.show()
+
+    controller_om = get_controller({'widget': 'IntSlider',
+                                    'min': df_dist_offline['om'].unique().min(),
+                                    'max': df_dist_offline['om'].unique().max(),
+                                    'value': df_dist_offline['om'].unique().min(),
+                                    'description': 'Select operating mode'})
+
+    controller_distance = get_controller({'widget': 'Dropdown',
+                                          'options': [('Cosine distance', 'cosine_distance'),
+                                                      ('Manhattan distance', 'manhattan_distance')],
+                                          'value': 'cosine_distance',
+                                          'description': 'Which distance'})
+
+    interact(make_plot, om=controller_om, distance=controller_distance)
+
+
+def plot_example_interactive():
+    def make_plot(rpm_torque, _run, _run_to_idx):
+        _rpm = int(rpm_torque.split(' - ')[0].strip('RPM'))
+        _torque = int(rpm_torque.split(' - ')[1].strip('Torque'))
+        run_idx = _run_to_idx[_run]
+        df_example = load_train_data(_rpm, _torque, _run)
+        print(f"A single vibration measurement (rpm={_rpm}, torque={_torque}, run={run_idx}) has the following shape: "
+              f"{df_example.shape}")
+
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        for var, ax in zip(['x', 'y', 'z'], axes):
+            ax.plot(df_example[var], label=var)
+            ax.set_title(var)
+            ax.legend()
+        fig.show()
+
+    rpms = [int(_f.split('/')[-1].split('_')[0].strip('V')) for _f in FILE_NAMES_HEALTHY]
+    torques = [int(_f.split('/')[-1].split('_')[1].strip('N')) for _f in FILE_NAMES_HEALTHY]
+    runs_per_combination = {}
+    for rpm in sorted(np.unique(rpms)):
+        for torque in sorted(np.unique(torques)):
+            runs = glob.glob(os.path.join(BASE_PATH_HEALTHY, f'V{rpm}_{torque}N_*.txt'))
+            runs = [int(run.split('/')[-1].split('_')[2].strip('.txt')) for run in runs]
+            if len(runs) > 0:
+                runs_per_combination[f'RMP {rpm} - Torque {torque}'] = runs
+
+    possible_combinations = list(runs_per_combination.keys())
+
+    controller_rpm_torque = get_controller({'widget': 'Dropdown',
+                                            'options': [(_combination, _combination) for _combination in
+                                                        possible_combinations],
+                                            'value': possible_combinations[0],
+                                            'description': 'Chose the context'})
+
+    def get_additional_options(rpm_torque):
+        possible_runs = sorted(runs_per_combination[rpm_torque])
+        run_to_idx = {_run: _idx+1 for _idx, _run in enumerate(possible_runs)}
+        controller_run = get_controller({'widget': 'Dropdown',
+                                         'options': [(_idx+1, _run) for _idx, _run in enumerate(possible_runs)],
+                                         'value': possible_runs[0],
+                                         'description': 'Which run'})
+
+        def _make_plot(run):
+            make_plot(rpm_torque, run, run_to_idx)
+
+        interact(_make_plot, run=controller_run)
+
+    interact(get_additional_options, rpm_torque=controller_rpm_torque)

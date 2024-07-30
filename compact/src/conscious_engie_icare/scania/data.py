@@ -24,6 +24,19 @@ def load_ts():
     return pd.read_csv(TRAIN_OPERATIONAL_PATH, dtype={'vehicle_id': str})
 
 
+def train_test_split_dfs(df_ts, attribute_columns, truck_ids_train, truck_ids_test):
+    df_ts = df_ts[['vehicle_id', 'time_step'] + attribute_columns]
+    df_train = df_ts[df_ts.vehicle_id.isin(truck_ids_train.astype(str))]
+    df_test = df_ts[df_ts.vehicle_id.isin(truck_ids_test.astype(str))]
+    return df_train, df_test
+
+
+def construct_decomposition_matrices(df_train, df_test):
+    V_train = df_train[attribute_columns].to_numpy()
+    V_test = df_test[attribute_columns].to_numpy()
+    return V_train, V_test
+
+
 def load_repairs():
     return
     

@@ -77,11 +77,13 @@ def get_first_time_step_per_vehicle_id(df_):
     return df_
 
 
-def normalize_by_total_count(df_, list_of_sensor_bins):
+def normalize_by_total_count(df_, list_of_sensor_bins, correct_histograms=False):
     """ Normalize by the total count. 
 
     df_: Pandas dataframe. The cumulative (imputed and preprocessed) timeseries.
     sensor_bins: list of lists. Divide each timestamp by all sensors from the given list.
+    correct_histograms: Boolean. If True, replace values where the sum in the bin is 0 with a uniform distribution.
+        Otherwise the division by 0 leads to NaNs.
     """
     # df_['sum'] = df_[sensor_bins].sum(axis=1)
     sums = []
@@ -89,5 +91,20 @@ def normalize_by_total_count(df_, list_of_sensor_bins):
         sum = df_[sensor_bins].sum(axis=1)
         for sb in sensor_bins:
             df_[sb] = df_[sb] / sum
+        if (sum < 1).any():
+            if correct_histograms:
+                print(f'sum < 1 for sensor bins {sensor_bins} in {(sum < 1).sum()} rows. Those will be replaced with a uniform distibution!')
+                # replace every NaN value with 1 / <number of sensor bins>
+                for sb in sensor_bins:
+                    df_.loc[sum < 1, sb] = 1 / len(sensor_bins)
+            else:
+                print(f'sum < 1 for sensor bins {sensor_bins} in {(sum < 1).sum()} rows. Those will have NaN as value!') 
         sums.append(sum)
     return df_, sums
+
+
+def remove_empty_rows(df_, attribute_columns=ATTRIBUTE_COLUMNS):
+    """ Remove rows (time steps), where there is at least one empty attribute columns. """
+    print(f'Removing {len(df_[df_.isna().any(axis=1)])} rows with missing values.')
+    df_ = df_.dropna(subset=attribute_columns, how='any')
+    return df_
