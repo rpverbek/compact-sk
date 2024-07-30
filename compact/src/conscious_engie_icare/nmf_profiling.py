@@ -8,6 +8,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import NMF
 import numpy as np
+from conscious_engie_icare import distance_metrics
 
 
 def extract_nmf_incremental(df_V, max_n_components, timestamps=None, verbose=True):
@@ -326,4 +327,34 @@ def calculate_om_ratios(vibration_measurement_periods, df_endo, om_labels):
         ratio = count / count.sum()
         vibration_measurement_periods_with_ratio.append(dict(row.to_dict(), **ratio.to_dict()))
     vibration_measurement_periods_with_ratio = pd.DataFrame(vibration_measurement_periods_with_ratio)
+
     return vibration_measurement_periods_with_ratio
+
+
+def calculate_distances_per_measurement_period(measurement_period, fingerprints, verbose=False):
+    # pointwise Mahalanobis distance
+    fingerprint_matrix = np.array([fingerprints[om].to_numpy().flatten() for om in fingerprints])
+    # calculate covariance matrix
+    fingerprint_S = np.cov(fingerprint_matrix.T)
+    # calculate inverse
+    fingerprint_SI = np.linalg.inv(fingerprint_S)
+    # calculate mu
+    fingerprint_mu = fingerprint_matrix.mean(axis=0)
+    df_dist_ = []
+    for idx, row in measurement_period.iterrows():
+        for om in fingerprints:
+            weights = row['W']
+            fingerprint = fingerprints[om]
+            tmp = {
+                'idx': idx,
+                'data': row,
+                'om': om,
+                # 'frobenius_norm': distance_metrics.frobenius_norm(weights, fingerprint),
+                # 'frobenius_norm_pow2': distance_metrics.frobenius_norm_v2(weights, fingerprint),
+                # 'frobenius_norm_sqrt': distance_metrics.frobenius_norm_v3(weights, fingerprint),
+                'cosine_distance': distance_metrics.cosine_distance(weights, fingerprint),
+                'manhattan_distance': distance_metrics.manhattan_distance(weights, fingerprint),
+            }
+            df_dist_.append(tmp)
+    df_dist_ = pd.DataFrame(df_dist_)
+    return df_dist_

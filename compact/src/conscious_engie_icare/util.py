@@ -4,8 +4,10 @@
 import csv
 import os
 import string
+import glob
 
 from conscious_engie_icare.config import data_dir
+from conscious_engie_icare.data.phm_data_handler import FILE_NAMES_HEALTHY, BASE_PATH_HEALTHY
 
 import pandas as pd
 import numpy as np
@@ -119,3 +121,17 @@ def calc_tpr_at_fpr_threshold(tpr, fpr, threshold=0.1):
 def calc_fpr_at_tpr_threshold(tpr, fpr, threshold=0.1):
     return calc_tpr_at_fpr_threshold(tpr=fpr, fpr=tpr, threshold=threshold)
 
+
+def get_operating_modes():
+    rpms = [int(_f.split('/')[-1].split('_')[0].strip('V')) for _f in FILE_NAMES_HEALTHY]
+    torques = [int(_f.split('/')[-1].split('_')[1].strip('N')) for _f in FILE_NAMES_HEALTHY]
+    df_operating_modes = pd.DataFrame(columns=sorted(np.unique(rpms)), index=sorted(np.unique(torques)), data='')
+    counter = 1
+    for torque in sorted(np.unique(torques)):
+        for rpm in sorted(np.unique(rpms)):
+            runs = glob.glob(os.path.join(BASE_PATH_HEALTHY, f'V{rpm}_{torque}N_*.txt'))
+            runs = [int(run.split('/')[-1].split('_')[2].strip('.txt')) for run in runs]
+            if len(runs) > 0:
+                df_operating_modes.loc[torque, rpm] = f'OM {counter}'
+                counter += 1
+    return df_operating_modes
