@@ -1,5 +1,6 @@
 import pandas as pd
 from tqdm import tqdm
+import os
 
 
 def calc_certainty_score_v1(row, radius=0.1):
@@ -45,5 +46,6 @@ def load_uncertainty_score(name, short_name, function, distances_):
     except FileNotFoundError:
         tqdm.pandas(desc=f'calculating {name}...')
         res = distances_.progress_apply(function, axis=1)
+        os.makedirs(os.path.dirname(name), exist_ok=True)
         res.to_csv(name)
     return res
