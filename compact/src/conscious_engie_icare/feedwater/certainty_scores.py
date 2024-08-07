@@ -39,13 +39,31 @@ def calc_certainty_score_svm_based(row):
     raise NotImplementedError
 
 
-def load_uncertainty_score(name, short_name, function, distances_):
-    try:
-        res = pd.read_csv(name, index_col=0).iloc[:, 0]
-        res.name = short_name
-    except FileNotFoundError:
-        tqdm.pandas(desc=f'calculating {name}...')
+def calculate_uncertainty_score(short_name, distances):
+    """ Calculate the uncertainty score. """
+    def calc_score_():
+        tqdm.pandas(desc=f'calculating {file_name}...')
         res = distances_.progress_apply(function, axis=1)
-        os.makedirs(os.path.dirname(name), exist_ok=True)
-        res.to_csv(name)
+        res.name = short_name
+        return res
+
+
+def load_uncertainty_score(short_name, function, distances_, file_name=None, cache_certainty_score=False):
+    """ Old function to load (or calculate) uncertainty score. """
+    def calc_score_():
+        tqdm.pandas(desc=f'calculating {file_name}...')
+        res = distances_.progress_apply(function, axis=1)
+        res.name = short_name
+        return res
+
+    if cache_certainty_score:
+        try:
+            res = pd.read_csv(file_name, index_col=0).iloc[:, 0]
+            res.name = short_name
+        except FileNotFoundError:
+            res = calc_score_()
+            os.makedirs(os.path.dirname(file_name), exist_ok=True)
+            res.to_csv(file_name)
+    else:
+        res = calc_score_()
     return res
