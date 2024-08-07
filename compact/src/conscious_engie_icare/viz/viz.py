@@ -692,7 +692,7 @@ def x_labels(ax, minor_day_interval=1, major_day_interval=7):
     return ax
 
 
-def show_fingerprints(model, df_V_train, meta_data_train):
+def show_fingerprints(model, df_V_train, meta_data_train, df_operating_modes):
 
     def make_plot(rpm, torque, run):
         _n_components = df_W.shape[1] - 5
@@ -724,21 +724,19 @@ def show_fingerprints(model, df_V_train, meta_data_train):
     # add operating mode (OM)
     df_W = pd.merge(df_W_train, meta_data_train.drop(columns=['direction']), left_index=True, right_index=True)
 
-    possible_rpms = sorted(df_W['rotational speed [RPM]'].unique())
+    possible_oms = df_operating_modes.values.flatten()
+    possible_oms = np.delete(possible_oms, np.where(possible_oms == ''))
+    # possible_rpms = sorted(df_W['rotational speed [RPM]'].unique())
 
-    controller_rpm = get_controller({'widget': 'Dropdown',
-                                     'options': [(_rpm, _rpm) for _rpm in possible_rpms],
-                                     'value': possible_rpms[0],
-                                     'description': 'Which RPM'})
+    controller_om = get_controller({'widget': 'Dropdown',
+                                    'options': [(_om, _om) for _om in possible_oms],
+                                    'value': possible_oms[0],
+                                    'description': 'Select the operating mode'})
 
-    possible_torques = sorted(df_W['torque [Nm]'].unique())
-
-    controller_torque = get_controller({'widget': 'Dropdown',
-                                        'options': [(_torque, _torque) for _torque in possible_torques],
-                                        'value': possible_torques[0],
-                                        'description': 'Which torque'})
-
-    def get_additional_options(rpm, torque):
+    def get_additional_options(operating_mode):
+        idx, col = np.where(df_operating_modes == operating_mode)
+        torque = df_operating_modes.index[idx][0]
+        rpm = df_operating_modes.columns[col][0]
         df_selected = df_W[(df_W['rotational speed [RPM]'] == rpm) & (df_W['torque [Nm]'] == torque)]
         possible_runs = ['mean'] + sorted(df_selected['sample_id'].unique())
 
@@ -751,7 +749,7 @@ def show_fingerprints(model, df_V_train, meta_data_train):
             make_plot(rpm, torque, run)
         interact(_make_plot, run=controller_run)
 
-    interact(get_additional_options, rpm=controller_rpm, torque=controller_torque)
+    interact(get_additional_options, operating_mode=controller_om)
 
 
 def plot_distances_interactive(df_dist_offline):
