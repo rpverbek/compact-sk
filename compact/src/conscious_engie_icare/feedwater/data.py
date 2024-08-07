@@ -8,6 +8,12 @@ from conscious_engie_icare.normalization import no_normalize, normalize_1, norma
 
 FOLDER_MODELS = os.path.join(LOCAL_PATH_NMF_MODELS, 'nmf-issue-28-02-23')
 
+CONTEXTUAL_COLUMNS = [
+    'velocity <v-MP> [RPM]', 'p_delta_pressure_inlet <deltap-filter-MP> [barg]',
+    'p_in [barg]', 'p_out <pout-MP> [barg]', 'p_delta [barg]', 'p_feedwater_tank <p-FWT> [barg]',
+    't_inlet <T-in-MP> [Celsius]', 't_fwt <T-fwt> [Celsius]'
+]
+
 
 LOCAL_PATH_DATA = os.path.join('..', '..', 'work', 'uc_feedwater_pumps')  # TODO
 LOCAL_PATH_OPERATIONAL = os.path.join(LOCAL_PATH_DATA, 'operational_data')
@@ -21,9 +27,11 @@ SETUP = {
 }
 
 
-def get_and_preprocess_data(pumps=PUMPS):
+def get_and_preprocess_data(pumps=PUMPS, large_operational_data=True):
     # Load contextual data
-    df_contextual = pd.concat([load_and_preprocess_operational_features(pump) for pump in pumps])
+    df_contextual = pd.concat([load_and_preprocess_operational_features(
+        pump, large_operational_data=large_operational_data
+    ) for pump in pumps])
     meta_columns = ['timestamp', 'pump']
     endogenous_columns = [
         'velocity <v-MP> [RPM]',
@@ -42,8 +50,11 @@ def get_and_preprocess_data(pumps=PUMPS):
     return df_V, df_contextual
 
 
-def load_and_preprocess_operational_features(pump, base_path=LOCAL_PATH_OPERATIONAL):
-    file_name = f'operational_features_pump{pump}.csv'
+def load_and_preprocess_operational_features(pump, base_path=LOCAL_PATH_OPERATIONAL, large_operational_data=True):
+    if large_operational_data:
+        file_name = f'operational_features_pump{pump}.csv'
+    else: 
+        file_name = f'operational_features_pump{pump}-5min-granularity.csv'
     file_path = os.path.join(base_path, file_name)
     df = pd.read_csv(file_path)
     df['timestamp'] = pd.to_datetime(df['timestamp'])

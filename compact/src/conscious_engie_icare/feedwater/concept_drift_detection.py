@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm.notebook import tqdm
 import pandas as pd
+from sklearn.metrics import pairwise
 
 
 def extract_vibration_measurement_periods(df_):
@@ -119,3 +120,22 @@ def create_pivot_table(df_):
     df_pivot_ = df_pivot_.pivot(index=['idx', 'timestamp', 'pump', 'location', 'direction'], columns='om', values='cosine_distance')
     df_pivot_['closest OM'] = df_pivot_.apply(lambda x: x.idxmin(), axis=1)
     return df_pivot_
+
+
+def calculate_distances_per_sensor_to_vibration_fingerprints(df_W_, component_columns, fingerprints):
+    """ Calculate distances of vibration weights with all fingerprints. """
+    df_dist_ = []
+    for idx, row in tqdm(df_W_.iterrows(), total=len(df_W_)):
+        # weights = row['W'].reshape(1, -1)
+        weights = row[component_columns].to_numpy().reshape(1, -1)
+        for om in fingerprints:
+            fingerprint = fingerprints[om]
+            fingerprint_vector = fingerprint.loc[(row.location, row.direction), :].to_numpy().reshape(1, -1)
+            tmp = {
+                'idx': idx, 'timestamp': row.timestamp, 'pump': row.pump, 'location': row.location, 'direction': row.direction, 
+                'data': row, 'om': om,
+                'cosine_distance': pairwise.cosine_distances(weights, fingerprint_vector)[0][0]
+            }
+            df_dist_.append(tmp)
+    df_dist_ = pd.DataFrame(df_dist_)
+    return df_dist_

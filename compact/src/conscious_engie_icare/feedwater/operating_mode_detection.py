@@ -9,6 +9,33 @@ from sklearn import metrics
 from sklearn.pipeline import Pipeline
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import MinMaxScaler
+from conscious_engie_icare.feedwater import util
+from tqdm import tqdm
+from sklearn.decomposition import PCA
+
+
+def extract_operating_modes(df_contextual_train, n_clusters, order_cluster_names=True):
+    contextual_groups = []
+    om_pipes = {}
+    for pump, contextual_group in tqdm(df_contextual_train.groupby('pump')):
+        pipe = Pipeline([
+            ('scaler', MinMaxScaler()),
+            ('pca', PCA(n_components=0.99)),
+            ('kmeans', KMeans(n_clusters=n_clusters[pump]))
+        ])
+        X = contextual_group.drop(columns=['timestamp', 'pump'])
+        contextual_group['cluster_kmeans'] = pipe.fit_predict(X)
+        contextual_groups.append(contextual_group)
+        om_pipes[pump] = pipe
+    df_contextual_train_with_labels = pd.concat(contextual_groups)
+
+    if order_cluster_names:
+        # replace cluster names 1, 2, ... with letters unique letters
+        df_contextual_train_with_labels, name_mapping = util.order_cluster_names(
+            df_contextual_train_with_labels, col_name_clusters='cluster_kmeans'
+        )
+
+    return df_contextual_train_with_labels, om_pipes
 
 
 def calculate_score(X, dimensionality_reduction, name,
