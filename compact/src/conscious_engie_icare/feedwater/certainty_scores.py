@@ -39,13 +39,12 @@ def calc_certainty_score_svm_based(row):
     raise NotImplementedError
 
 
-def calculate_uncertainty_score(short_name, distances):
+def calculate_uncertainty_score(distances, name='certainty_score', function=(lambda x: calc_certainty_score_v3(x, radius=0.2))):
     """ Calculate the uncertainty score. """
-    def calc_score_():
-        tqdm.pandas(desc=f'calculating {file_name}...')
-        res = distances_.progress_apply(function, axis=1)
-        res.name = short_name
-        return res
+    tqdm.pandas(desc=f'calculating {name}...')
+    res = distances.progress_apply(function, axis=1)
+    res.name = name
+    return res
 
 
 def load_uncertainty_score(short_name, function, distances_, file_name=None, cache_certainty_score=False):

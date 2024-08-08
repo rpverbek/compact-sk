@@ -139,3 +139,17 @@ def calculate_distances_per_sensor_to_vibration_fingerprints(df_W_, component_co
             df_dist_.append(tmp)
     df_dist_ = pd.DataFrame(df_dist_)
     return df_dist_
+
+
+def extract_vibration_fingerprints(df_W_train, df_contextual_train_with_labels, component_columns):
+    df_W_train_with_OM = pd.merge_asof(
+    df_W_train, df_contextual_train_with_labels.sort_values(by='timestamp'),
+        by='pump', on='timestamp', direction='backward'
+    )
+    df_ = df_W_train_with_OM[component_columns].copy()
+    df_[['operating_mode', 'location', 'direction']] = df_W_train_with_OM[['cluster_kmeans', 'location', 'direction']]
+    fingerprints = {
+        om: om_group.drop(columns=['operating_mode']).groupby(['location', 'direction']).mean()
+        for om, om_group in df_.groupby('operating_mode')
+    }
+    return fingerprints
