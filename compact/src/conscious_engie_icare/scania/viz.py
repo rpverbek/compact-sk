@@ -13,13 +13,16 @@ from ydata_profiling import ProfileReport
 FPATH_PROFILING_REPORTS = os.path.join('profiling_reports')
 
 
-def plot_cumulative_timeseries(df, vehicle_ids, attribute_columns=None):
+def plot_cumulative_timeseries(df, vehicle_ids, attribute_columns=None, fig=None, axes=None):
     if attribute_columns is None:
         attribute_columns = get_attribute_columns(df)
     
     unique_features = set(int(col.split('_')[0]) for col in attribute_columns)
-    fig, axes = plt.subplots(figsize=(6*len(unique_features), 4*len(vehicle_ids)),
-                             nrows=len(vehicle_ids), ncols=len(unique_features), sharex=True)
+    if fig is None or axes is None:
+        fig, axes = plt.subplots(figsize=(6*len(unique_features), 4*len(vehicle_ids)),
+                                 nrows=len(vehicle_ids), ncols=len(unique_features), sharex=True)
+    else:
+        assert fig is not None and axes is not None
     if (len(vehicle_ids) > 1) and (len(unique_features) > 1):
         for vehicle_id, axes_row in zip(vehicle_ids, axes):
             df_ = df[df.vehicle_id == vehicle_id].set_index('time_step')
@@ -30,7 +33,7 @@ def plot_cumulative_timeseries(df, vehicle_ids, attribute_columns=None):
                 ax.set_xlabel('timestamp')
                 ax.set_ylabel('Cumulative count')
                 ax.set_title(f'{feature} (truck {vehicle_id})')
-    elif len(vehicle_ids) == 1:
+    elif (len(vehicle_ids) == 1) and (len(unique_features) > 1):
         df_ = df[df.vehicle_id == vehicle_ids[0]].set_index('time_step')
         for feature, ax in zip(unique_features, axes):
             df_plot_ = df_[df_.columns[df_.columns.str.contains(str(feature))]]
@@ -38,7 +41,7 @@ def plot_cumulative_timeseries(df, vehicle_ids, attribute_columns=None):
             ax.set_xlabel('abstract timestamp unit')
             ax.set_ylabel('cumulative count')
             ax.set_title(f'{feature} (truck {vehicle_ids[0]})')
-    elif len(unique_features) == 1:
+    elif (len(vehicle_ids) > 1) and (len(unique_features) == 1):
         feature = list(unique_features)[0]
         for vehicle_id, ax in zip(vehicle_ids, axes):
             df_ = df[df.vehicle_id == vehicle_id].set_index('time_step')
@@ -48,7 +51,15 @@ def plot_cumulative_timeseries(df, vehicle_ids, attribute_columns=None):
             ax.set_ylabel('cumulative count')
             ax.set_title(f'{feature} (truck {vehicle_id})')
     else:
-        raise NotImplementedError()
+        ax = axes
+        feature = list(unique_features)[0]
+        vehicle_id = vehicle_ids[0]
+        df_ = df[df.vehicle_id == vehicle_id].set_index('time_step')
+        df_plot_ = df_[df_.columns[df_.columns.str.contains(str(feature))]]
+        ax.plot(df_plot_, marker='o')
+        ax.set_xlabel('abstract timestamp unit')
+        ax.set_ylabel('cumulative count')
+        ax.set_title(f'{feature} (truck {vehicle_id})')
     fig.tight_layout()
     return fig, axes
 
@@ -78,9 +89,9 @@ def plot_distributions(df_, max_quantile=None, bins=50):
     return fig, axes
 
 
-def plot_V(V):
+def plot_V(V, figsize=(6,8), bin_names=None):
     cmap = mpl.cm.get_cmap("Blues")
-    fig, ax = plt.subplots(figsize=(6, 8))
+    fig, ax = plt.subplots(figsize=figsize)
     nrows = V.shape[0]
     ncols = V.shape[1]
     title_ = "Performance matrix V" + f" ({nrows} x {ncols})"
@@ -91,10 +102,13 @@ def plot_V(V):
         cmap=cmap,
         aspect='auto',
         interpolation='nearest',
-        norm=mpl.colors.LogNorm(vmin=None, vmax=None),
+        # norm=mpl.colors.LogNorm(vmin=None, vmax=None),
         # extent=[0.25,30.25,nrows,0]
     )
-    ax.tick_params(axis='y', labelrotation=90)
+    ax.tick_params(axis='x', labelrotation=90)
+    if bin_names is not None:
+        ax.set_xticks(range(len(bin_names)))
+        ax.set_xticklabels(bin_names)
     return fig, ax
 
 
