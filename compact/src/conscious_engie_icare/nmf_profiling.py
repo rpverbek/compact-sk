@@ -9,6 +9,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.decomposition import NMF
 import numpy as np
 from conscious_engie_icare import distance_metrics
+from conscious_engie_icare.normalization import normalize_1
 
 
 def extract_nmf_incremental(df_V, max_n_components, timestamps=None, verbose=True):
@@ -358,3 +359,104 @@ def calculate_distances_per_measurement_period(measurement_period, fingerprints,
             df_dist_.append(tmp)
     df_dist_ = pd.DataFrame(df_dist_)
     return df_dist_
+
+
+def extract_vibration_weights_per_measurement_period(measurement_periods, col_names, band_cols, normalization, model,
+                                                     verbose=False):
+    Ws = []
+    for period in tqdm(measurement_periods, disable=not verbose,
+                       desc='Extracting vibration weights per measurement period'):
+        assert len(period) == 3, 'should have exactly 3 directions per measurement period'
+        band_column_names = period.columns[period.columns.str.contains('band_')]
+        V = period.set_index(['direction'])[band_column_names]  # already normalized
+        W = model.nmf.transform(V.to_numpy())
+        W = pd.DataFrame(W, columns=col_names)
+        Ws.append({
+            'unique_sample_id': period.unique_sample_id.unique()[0],
+            'V_normalized': V,
+            'W': W
+        })
+    return pd.DataFrame(Ws)
+
+
+def get_df_W_offline_and_online(df_V_train, meta_data_train, meta_data_test, model, df_orders_test):
+    # extract train vibration measurement periods
+
+    df_V_train[['unique_sample_id', 'direction']] = meta_data_train[['unique_sample_id', 'direction']]
+    train_vibration_measurement_periods = []
+    for sample_id, group in df_V_train.groupby('unique_sample_id'):
+        measurement_period = {
+            'start': 'unknown',
+            'stop': 'unknown',
+            'group': group,
+            'sample_id': sample_id,
+        }
+        train_vibration_measurement_periods.append(group)
+
+    # extract test vibration measurement periods
+
+    n_components = model.W.shape[-1]
+    W_train = model.W.reshape(-1, n_components)
+    df_W_train = pd.DataFrame(W_train)
+    # display(f'Fold {i}. Shape: {W_train_.shape}')
+    df_W_train.index = df_V_train.index
+    df_W_train['direction'] = meta_data_train['direction']
+
+    # add operating mode (OM)
+    df_W_train_with_OM = pd.merge(df_W_train, meta_data_train.drop(columns=['direction']), left_index=True,
+                                  right_index=True)
+    df_W_train_with_OM['cluster_label_unique'] = df_W_train_with_OM.groupby(
+        ['rotational speed [RPM]', 'torque [Nm]']).ngroup()
+    cluster_label_unique_name_mapping = df_W_train_with_OM.groupby('cluster_label_unique').first()[
+        ['rotational speed [RPM]', 'torque [Nm]']].reset_index()
+
+    cols_ = df_V_train.columns
+    band_cols = cols_[cols_.str.contains('band')].tolist()
+
+    df_V_test_normalized = normalize_1(df_orders_test, band_cols)
+    df_ = df_V_test_normalized
+    df_[['sample_id', 'unique_sample_id', 'direction']] = meta_data_test[['sample_id', 'unique_sample_id', 'direction']]
+    test_vibration_measurement_periods = []
+    test_vibration_measurement_periods_meta_data = []
+    n_index_errors = 0
+    for unique_sample_id, group in df_.groupby('unique_sample_id'):
+        rpm = meta_data_test[meta_data_test['unique_sample_id'] == unique_sample_id]['rotational speed [RPM]'].unique()[0]
+        torque = meta_data_test[meta_data_test['unique_sample_id'] == unique_sample_id]['torque [Nm]'].unique()[0]
+        try:
+            om = cluster_label_unique_name_mapping[
+                (cluster_label_unique_name_mapping['rotational speed [RPM]'] == rpm) &
+                (cluster_label_unique_name_mapping['torque [Nm]'] == torque)]['cluster_label_unique'].iloc[0]
+        except IndexError:
+            n_index_errors += 1
+            om = -1
+        measurement_period = {'start': 'unknown',
+                              'stop': 'unknown',
+                              'group': group,
+                              'unique_sample_id': unique_sample_id,
+                              'rpm': rpm,
+                              'torque': torque,
+                              'unique_cluster_label': om}
+        test_vibration_measurement_periods.append(group)
+        test_vibration_measurement_periods_meta_data.append(measurement_period)
+
+    n_total = len(test_vibration_measurement_periods)
+
+    component_cols = list(range(n_components))
+    grouping_vars = ['direction', 'cluster_label_unique']
+    df_ = df_W_train_with_OM[component_cols + grouping_vars].copy()
+    fingerprints = {
+        om: om_group.groupby(['direction']).mean().drop(columns=['cluster_label_unique']) for om, om_group in
+        df_.groupby('cluster_label_unique')
+    }
+
+    cols_ = df_V_train.columns
+    band_cols = cols_[cols_.str.contains('band')].tolist()
+
+    df_W_offline = extract_vibration_weights_per_measurement_period(train_vibration_measurement_periods,
+                                                                    fingerprints[0].columns, band_cols, normalize_1,
+                                                                    model)
+    df_W_online = extract_vibration_weights_per_measurement_period(test_vibration_measurement_periods,
+                                                                   fingerprints[0].columns, band_cols, normalize_1,
+                                                                   model)
+    return df_W_offline, df_W_online, fingerprints, test_vibration_measurement_periods_meta_data
+
