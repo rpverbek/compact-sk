@@ -56,7 +56,6 @@ def get_location_entries(df):
         string.ascii_uppercase[:len(locations_value_counts)])
     alias_dict = locations_value_counts['alias'].to_dict()
     locations = df.replace({'location': alias_dict})
-
     return locations
 
 
