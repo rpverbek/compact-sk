@@ -119,3 +119,13 @@ def create_merged_df(df_dist_pivot, process_view, pump, train=False, om_name='OM
     df_merged['vibration view: closest fingerprint'] = df_merged['closest OM']
     df_merged['process view: closest operating mode'] = df_merged['OM-replaced-name']
     return df_merged
+
+
+def construct_W_dataframe(W, order_components, meta_data, index):
+    W_ordered = W[:, order_components]  # reorder components
+    df_W = pd.DataFrame(W_ordered)
+    df_W.index = index
+    df_W.columns = df_W.columns.astype(str)
+    df_W[['timestamp', 'pump', 'location', 'direction']] = meta_data[['timestamp', 'pump', 'location', 'direction']]
+    df_W['timestamp'] = pd.to_datetime(df_W['timestamp'], utc=True)
+    return df_W

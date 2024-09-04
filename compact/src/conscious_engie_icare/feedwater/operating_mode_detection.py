@@ -10,7 +10,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import MinMaxScaler
 from conscious_engie_icare.feedwater import util
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 from sklearn.decomposition import PCA
 
 
@@ -21,7 +21,7 @@ def extract_operating_modes(df_contextual_train, n_clusters, order_cluster_names
         pipe = Pipeline([
             ('scaler', MinMaxScaler()),
             ('pca', PCA(n_components=0.99)),
-            ('kmeans', KMeans(n_clusters=n_clusters[pump]))
+            ('kmeans', KMeans(n_clusters=n_clusters[pump], n_init=10))
         ])
         X = contextual_group.drop(columns=['timestamp', 'pump'])
         contextual_group['cluster_kmeans'] = pipe.fit_predict(X)
@@ -116,3 +116,20 @@ def find_optimal_number_of_clusters(X,
         np.savetxt(y_file_name, y, delimiter=",")
         np.savetxt(X_file_name, X_compressed, delimiter=",")
     return pd.DataFrame(scores)
+
+
+def calculate_operating_mode_certainty(pipe_, df_contextual_selected_pump, centroids_):
+    # calculate distance to centroids (prototypical operating modes)
+    normalized_space_ = pipe_['scaler'].transform(df_contextual_selected_pump[data.CONTEXTUAL_COLUMNS])
+    pca_transformed_space_ = pipe_['pca'].transform(normalized_space_)
+    distances = pairwise.euclidean_distances(pca_transformed_space_, centroids_)
+    distances = pd.DataFrame(distances, index=df_contextual_selected_pump.index)
+
+    # calculate operating mode and certainty score
+    uncertainty_score_ = certainty_scores.calculate_uncertainty_score_fast(distances)
+    om = distances[uncertainty_score_ > 0].idxmin(axis=1)
+    om.name = 'OM'
+    result = pd.concat([df_contextual_selected_pump, om, uncertainty_score_], axis=1)
+    error_msg = 'The resulting dataframe has a different length than the original one.'
+    assert len(result) == len(df_contextual_selected_pump), error_msg
+    return result

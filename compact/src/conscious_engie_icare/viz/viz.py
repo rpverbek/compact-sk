@@ -21,6 +21,10 @@ from matplotlib.gridspec import GridSpec
 from conscious_engie_icare.data.phm_data_handler import load_train_data, FILE_NAMES_HEALTHY, BASE_PATH_HEALTHY
 import glob
 import os
+from plotly.subplots import make_subplots
+from sklearn.preprocessing import MinMaxScaler
+from conscious_engie_icare.feedwater import data
+import plotly.graph_objects as go
 
 previous_value_threshold = 95
 
@@ -826,3 +830,62 @@ def plot_example_interactive():
         interact(_make_plot, run=controller_run)
 
     interact(get_additional_options, rpm_torque=controller_rpm_torque)
+
+
+def visualize_spider_chart(df_contextual_train_with_labels, short_form=None):
+    short_form = short_form or ['v', 'p-delta-MP', 'p-in', 'p-out', 'p-delta', 'p-fwt', 't-in', 't-fwt']
+    def calc_params(s):
+        r = pd.concat([s, pd.Series(s.iloc[0])])
+        theta = short_form + [short_form[0]]
+        return {'r': r, 'theta': theta}
+
+
+    om_dict = {om: group.iloc[0].pump for om, group in df_contextual_train_with_labels.groupby('cluster_kmeans')}
+
+    nrows=3
+    ncols=6
+    CLUSTER_ORDER = df_contextual_train_with_labels.groupby('cluster_kmeans').max().sort_values(by=['pump', 'velocity <v-MP> [RPM]']).index
+    titles = ["<span style='color:#ff0000;'>" + om + " (" + str(om_dict[om]) + ") </span>" for om in CLUSTER_ORDER]
+    fig = make_subplots(rows=nrows, cols=ncols, specs=[[{'type': 'polar'}]*ncols]*nrows, subplot_titles=titles)
+    min_color = 'blue'
+    max_color = 'red'
+
+    df_ = df_contextual_train_with_labels.copy()
+    scaler = MinMaxScaler()
+    df_[data.CONTEXTUAL_COLUMNS] = scaler.fit_transform(df_[data.CONTEXTUAL_COLUMNS])
+    for i, cluster in enumerate(CLUSTER_ORDER, start=0):
+        group = df_[df_.cluster_kmeans == cluster]
+        fig_row = i//ncols+1
+        fig_col = i%ncols+1
+
+        # Assign maximum value
+        fig.add_trace(go.Scatterpolar(
+            name = cluster,
+            **calc_params(group[data.CONTEXTUAL_COLUMNS].max()),
+            text=pd.DataFrame(scaler.inverse_transform(group[data.CONTEXTUAL_COLUMNS]), columns=data.CONTEXTUAL_COLUMNS).max(),
+            line=dict(color='red', dash='solid'),  
+        ), fig_row, fig_col)
+
+        # Assign minimum value
+        fig.add_trace(go.Scatterpolar(
+            name = cluster,
+            **calc_params(group[data.CONTEXTUAL_COLUMNS].min()),
+            text=pd.DataFrame(scaler.inverse_transform(group[data.CONTEXTUAL_COLUMNS]), columns=data.CONTEXTUAL_COLUMNS).min(),
+            line=dict(color='blue', dash='solid'),  
+        ), fig_row, fig_col)
+
+        # Assign median value
+        fig.add_trace(go.Scatterpolar(
+            name = cluster,
+            **calc_params(group[data.CONTEXTUAL_COLUMNS].median()),
+            text=pd.DataFrame(scaler.inverse_transform(group[data.CONTEXTUAL_COLUMNS]), columns=data.CONTEXTUAL_COLUMNS).median(),
+            line=dict(color='black', dash='solid'),
+            # mode = 'markers', 
+            opacity=0.5,
+        ), fig_row, fig_col)
+
+    fig.update_layout(height=600, width=1100, showlegend=False, title_text="Bounding boxes per operating mode")
+    fig.update_polars(angularaxis_rotation=28, 
+                    radialaxis=dict(range=[0, 1], tickvals=[0, 0.2, 0.4, 0.6, 0.8, 1], tickfont={'size': 8}, showticklabels=True))
+
+    fig.show(renderer='svg')
