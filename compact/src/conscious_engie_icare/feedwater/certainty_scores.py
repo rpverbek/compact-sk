@@ -1,6 +1,8 @@
 import pandas as pd
 from tqdm import tqdm
 import os
+from conscious_engie_icare.feedwater import data, certainty_scores
+from sklearn.metrics import pairwise
 
 
 def calc_certainty_score_v1(row, radius=0.1):
@@ -45,6 +47,33 @@ def calculate_uncertainty_score(distances, name='certainty_score', function=(lam
     res = distances.progress_apply(function, axis=1)
     res.name = name
     return res
+
+
+def calculate_uncertainty_score_fast(distances, name='certainty_score', radius=0.2):
+    """ Calculate the uncertainty score. """
+    number_of_centroids_within_radius = (distances < radius).sum(axis=1)
+    uncertainty_score = number_of_centroids_within_radius
+    # print(distances.loc[uncertainty_score > 0].min(axis=1))
+    uncertainty_score.loc[uncertainty_score != 0] = 1 - distances.loc[uncertainty_score > 0].min(axis=1)/radius
+    uncertainty_score.name = name
+    return uncertainty_score
+
+
+def calculate_operating_mode_certainty(pipe_, df_contextual_selected_pump, centroids_):
+    # calculate distance to centroids (prototypical operating modes)
+    normalized_space_ = pipe_['scaler'].transform(df_contextual_selected_pump[data.CONTEXTUAL_COLUMNS])
+    pca_transformed_space_ = pipe_['pca'].transform(normalized_space_)
+    distances = pairwise.euclidean_distances(pca_transformed_space_, centroids_)
+    distances = pd.DataFrame(distances, index=df_contextual_selected_pump.index)
+
+    # calculate operating mode and certainty score
+    uncertainty_score_ = certainty_scores.calculate_uncertainty_score_fast(distances)
+    om = distances[uncertainty_score_ > 0].idxmin(axis=1)
+    om.name = 'OM'
+    result = pd.concat([df_contextual_selected_pump, om, uncertainty_score_], axis=1)
+    error_msg = 'The resulting dataframe has a different length than the original one.'
+    assert len(result) == len(df_contextual_selected_pump), error_msg
+    return result
 
 
 def load_uncertainty_score(short_name, function, distances_, file_name=None, cache_certainty_score=False):

@@ -767,11 +767,28 @@ def plot_distances_interactive(df_dist_offline):
         ax.set_title(f'Operating mode {om}')
         fig.show()
 
+    # Check if 'om' is numeric or categorical
+    if pd.api.types.is_numeric_dtype(df_dist_offline['om']):
+        # If 'om' is numeric, use an IntSlider
+        controller_om = get_controller({'widget': 'IntSlider',
+                                        'min': int(df_dist_offline['om'].min()),
+                                        'max': int(df_dist_offline['om'].max()),
+                                        'value': int(df_dist_offline['om'].min()),
+                                        'description': 'Select operating mode'})
+    else:
+        # If 'om' is categorical, use a Dropdown
+        controller_om = get_controller({'widget': 'Dropdown',
+                                        'options': list(df_dist_offline['om'].unique()),
+                                        'value': df_dist_offline['om'].unique()[0],
+                                        'description': 'Select operating mode'})
+
+    """
     controller_om = get_controller({'widget': 'IntSlider',
                                     'min': df_dist_offline['om'].unique().min(),
                                     'max': df_dist_offline['om'].unique().max(),
                                     'value': df_dist_offline['om'].unique().min(),
                                     'description': 'Select operating mode'})
+    """
 
     controller_distance = get_controller({'widget': 'Dropdown',
                                           'options': [('Cosine distance', 'cosine_distance'),
