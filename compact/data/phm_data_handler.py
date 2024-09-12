@@ -88,7 +88,7 @@ def fetch_and_unzip_data(fname="Data_Challenge_PHM2023_training_data", force=Fal
     fname_zip = f'{fname}.zip'
     local_path_zipped = os.path.join(data_path, fname_zip)
     local_path_unzipped = os.path.join(data_path, fname)
-    download_from_url(local_path_zipped)
+    # download_from_url(local_path_zipped)
     if not os.path.exists(local_path_unzipped) or force:
         assert os.path.exists(local_path_zipped), f'Could not find {local_path_zipped}'
         print('Unzipping data...')
