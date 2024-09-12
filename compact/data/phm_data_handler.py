@@ -6,6 +6,10 @@ import os
 import pandas as pd
 from scipy.signal import stft, welch
 import glob
+from pathlib import Path, PosixPath
+import requests
+from tqdm import tqdm
+
 
 # train set
 BASE_PATH_HEALTHY = os.path.join('..', 'data', 'Data_Challenge_PHM2023_training_data', 'Pitting_degradation_level_0')
@@ -43,8 +47,43 @@ FPATH_META_DATA_TEST_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'meta_data_test_f
 FPATH_META_DATA_TEST = os.path.join(CACHING_FOLDER_NAME, 'meta_data_test.pkl')
 
 
+def download_from_url(fname, force=False):
+    """download file from url to target location.
+    From: https://stackoverflow.com/questions/15644964/python-progress-bar-and-downloads
+
+    :param fname: str. Path to store file locally
+    :param force: bool. Whether to force the download even if file exist.
+    Default: False
+
+    :returns: fname.
+    """
+
+    url = 'https://phm-datasets.s3.amazonaws.com/Data_Challenge_PHM2023_training_data.zip'
+    fname = Path(fname) if not isinstance(fname, PosixPath) else fname
+    if (not os.path.exists(fname)) | force:
+        #
+        if fname.parent.exists() is False:
+            print(f'{fname.parent} directory does not exist and will be created')
+            fname.parent.mkdir(parents=True)
+        resp = requests.get(url, stream=True)
+        total = int(resp.headers.get('content-length', 0))
+        # open(fname, 'wb').close()
+        with open(fname, 'wb') as file, tqdm(
+                desc=f'Downloading file {fname}',
+                total=total,
+                unit='iB',
+                unit_scale=True,
+                unit_divisor=1024,
+        ) as bar:
+            for data in resp.iter_content(chunk_size=1024):
+                size = file.write(data)
+                bar.update(size)
+    return fname
+
+
 def fetch_and_unzip_data(fname="Data_Challenge_PHM2023_training_data", force=False):
     """ Fetch and unzip data from the remote server. """
+    download_from_url(fname)
     fname_zip = f'{fname}.zip'
     local_path_zipped = os.path.join('..', 'data', fname_zip)
     local_path_unzipped = os.path.join('..', 'data', fname)
