@@ -47,7 +47,7 @@ FPATH_META_DATA_TEST_FOLDS = os.path.join(CACHING_FOLDER_NAME, 'meta_data_test_f
 FPATH_META_DATA_TEST = os.path.join(CACHING_FOLDER_NAME, 'meta_data_test.pkl')
 
 
-def download_from_url(fname, force=False):
+def download_from_url(force=False):
     """download file from url to target location.
     From: https://stackoverflow.com/questions/15644964/python-progress-bar-and-downloads
 
@@ -59,6 +59,10 @@ def download_from_url(fname, force=False):
     """
 
     url = 'https://phm-datasets.s3.amazonaws.com/Data_Challenge_PHM2023_training_data.zip'
+
+    data_path = os.path.join('..', 'data')
+    fname_zip = 'Data_Challenge_PHM2023_training_data.zip'
+    fname = os.path.join(data_path, fname_zip)
     fname = Path(fname) if not isinstance(fname, PosixPath) else fname
     if (not os.path.exists(fname)) | force:
         #
