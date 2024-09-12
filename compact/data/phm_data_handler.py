@@ -12,7 +12,8 @@ from tqdm import tqdm
 
 
 # train set
-BASE_PATH_HEALTHY = os.path.join('..', 'data', 'Data_Challenge_PHM2023_training_data', 'Pitting_degradation_level_0')
+BASE_PATH_HEALTHY = os.path.join('..', 'data', 'Data_Challenge_PHM2023_training_data',
+                                 'Pitting_degradation_level_0 (Healthy)')
 FILE_NAMES_HEALTHY = glob.glob(os.path.join(BASE_PATH_HEALTHY, '*.txt'))
 
 # cached results
@@ -87,6 +88,8 @@ def download_from_url(force=False):
 
 def fetch_and_unzip_data(fname="Data_Challenge_PHM2023_training_data", force=False):
     """ Fetch and unzip data from the remote server. """
+    download_from_url()
+
     data_path = os.path.join('..', 'data')
 
     fname_zip = f'{fname}.zip'
