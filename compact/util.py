@@ -3,7 +3,7 @@
 
 import os
 import glob
-from compact.data.phm_data_handler import FILE_NAMES_HEALTHY, BASE_PATH_HEALTHY
+from compact.data.phm_data_handler import BASE_PATH_HEALTHY
 import pandas as pd
 import numpy as np
 from sklearn.metrics import auc
@@ -53,8 +53,9 @@ def calc_fpr_at_tpr_threshold(tpr, fpr, threshold=0.1):
 
 
 def get_operating_modes():
-    rpms = [int(_f.split('/')[-1].split('_')[0].strip('V')) for _f in FILE_NAMES_HEALTHY]
-    torques = [int(_f.split('/')[-1].split('_')[1].strip('N')) for _f in FILE_NAMES_HEALTHY]
+    file_names_healthy = glob.glob(os.path.join(BASE_PATH_HEALTHY, '*.txt'))
+    rpms = [int(_f.split('/')[-1].split('_')[0].strip('V')) for _f in file_names_healthy]
+    torques = [int(_f.split('/')[-1].split('_')[1].strip('N')) for _f in file_names_healthy]
     df_operating_modes = pd.DataFrame(columns=sorted(np.unique(rpms)), index=sorted(np.unique(torques)), data='')
     counter = 1
     for torque in sorted(np.unique(torques)):
