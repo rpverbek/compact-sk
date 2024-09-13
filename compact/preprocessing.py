@@ -6,7 +6,7 @@ Preprocessing
 from compact.data.phm_data_handler import BASE_PATHS_TEST
 from compact.normalization import normalize_1
 from compact.nmf_profiling import derive_df_orders, derive_df_vib
-from compact.data.phm_data_handler import FILE_NAMES_HEALTHY, \
+from compact.data.phm_data_handler import BASE_PATH_HEALTHY, \
     fetch_and_unzip_data, load_data, load_cached_data, FPATH_DF_ORDERS_TRAIN, FPATH_META_DATA_TRAIN, \
     FPATH_DF_V_TRAIN, FPATH_DF_ORDERS_TEST, FPATH_META_DATA_TEST, \
     PITTING_LEVELS
@@ -21,7 +21,8 @@ import glob
 def _convert_to_frequency_domain(nperseg=10240, nfft=None, fs=20480, split=0.75):
 
     noverlap = nperseg // 2
-    data_healthy, f = load_data(FILE_NAMES_HEALTHY, nperseg=nperseg, noverlap=noverlap, nfft=nfft, fs=fs)
+    file_names_healthy = glob.glob(os.path.join(BASE_PATH_HEALTHY, '*.txt'))
+    data_healthy, f = load_data(file_names_healthy, nperseg=nperseg, noverlap=noverlap, nfft=nfft, fs=fs)
 
     split_id = int(len(data_healthy) * split)
     random.Random(0).shuffle(data_healthy)

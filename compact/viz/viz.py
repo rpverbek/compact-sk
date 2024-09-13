@@ -15,7 +15,7 @@ from ipywidgets import interact, Layout
 import ipywidgets as widgets
 from copy import deepcopy
 from matplotlib.gridspec import GridSpec
-from compact.data.phm_data_handler import load_train_data, FILE_NAMES_HEALTHY, BASE_PATH_HEALTHY
+from compact.data.phm_data_handler import load_train_data, BASE_PATH_HEALTHY
 from compact.util import calculate_roc_characteristics, calc_tpr_at_fpr_threshold, calc_fpr_at_tpr_threshold
 import glob
 import os
@@ -294,8 +294,9 @@ def plot_example_interactive():
             ax.legend()
         fig.show()
 
-    rpms = [int(_f.split('/')[-1].split('_')[0].strip('V')) for _f in FILE_NAMES_HEALTHY]
-    torques = [int(_f.split('/')[-1].split('_')[1].strip('N')) for _f in FILE_NAMES_HEALTHY]
+    file_names_healthy = glob.glob(os.path.join(BASE_PATH_HEALTHY, '*.txt'))
+    rpms = [int(_f.split('/')[-1].split('_')[0].strip('V')) for _f in file_names_healthy]
+    torques = [int(_f.split('/')[-1].split('_')[1].strip('N')) for _f in file_names_healthy]
     runs_per_combination = {}
     for rpm in sorted(np.unique(rpms)):
         for torque in sorted(np.unique(torques)):

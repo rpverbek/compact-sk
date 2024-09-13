@@ -5,7 +5,6 @@ import zipfile
 import os
 import pandas as pd
 from scipy.signal import stft, welch
-import glob
 from pathlib import Path, PosixPath
 import requests
 from tqdm import tqdm
@@ -14,7 +13,7 @@ from tqdm import tqdm
 # train set
 BASE_PATH_HEALTHY = os.path.join('..', 'data', 'Data_Challenge_PHM2023_training_data',
                                  'Pitting_degradation_level_0 (Healthy)')
-FILE_NAMES_HEALTHY = glob.glob(os.path.join(BASE_PATH_HEALTHY, '*.txt'))
+# FILE_NAMES_HEALTHY = glob.glob(os.path.join(BASE_PATH_HEALTHY, '*.txt'))
 
 # cached results
 # previous caching folder:
