@@ -98,6 +98,7 @@ def fetch_and_unzip_data(fname="Data_Challenge_PHM2023_training_data", force=Fal
     if not os.path.exists(local_path_unzipped) or force:
         assert os.path.exists(local_path_zipped), f'Could not find {local_path_zipped}'
         print('Unzipping data...')
+        print(local_path_zipped)
         with zipfile.ZipFile(local_path_zipped, 'r') as zip_ref:
             zip_ref.extractall(os.path.join('..', 'data'))
 
