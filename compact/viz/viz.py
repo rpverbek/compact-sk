@@ -240,6 +240,12 @@ def show_fingerprints(model, df_V_train, meta_data_train, df_operating_modes):
                         cbar=False)
             ax.set_title(f'Measurement {run} @ {rpm} rpm, {torque} Nm')
             ax.set_xlabel('component')
+
+        # Modify the y-axis tick labels to remove the first 4 letters
+        y_ticks = ax.get_yticklabels()
+        new_labels = [label.get_text()[4:] for label in y_ticks]
+        ax.set_yticklabels(new_labels)
+
         fig.show()
 
     n_components = model.W.shape[1]
