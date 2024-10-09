@@ -220,7 +220,7 @@ def derive_df_orders(df_vib, setup, f, verbose=True):
     return df_orders, meta_data
 
 
-def get_df_W_offline_and_online(_df_V_train, meta_data_train, meta_data_test, model, df_orders_test):
+def get_df_W_offline_and_online(_df_V_train, meta_data_train, meta_data_test, model, df_orders_test, ):
     # extract train vibration measurement periods
 
     df_V_train = _df_V_train.copy()
@@ -260,6 +260,7 @@ def get_df_W_offline_and_online(_df_V_train, meta_data_train, meta_data_test, mo
         rpm = meta_data_test[meta_data_test['unique_sample_id'] ==
                              unique_sample_id]['rotational speed [RPM]'].unique()[0]
         torque = meta_data_test[meta_data_test['unique_sample_id'] == unique_sample_id]['torque [Nm]'].unique()[0]
+        """
         try:
             om = cluster_label_unique_name_mapping[
                 (cluster_label_unique_name_mapping['rotational speed [RPM]'] == rpm) &
@@ -267,6 +268,8 @@ def get_df_W_offline_and_online(_df_V_train, meta_data_train, meta_data_test, mo
         except IndexError:
             n_index_errors += 1
             om = -1
+        """
+        
         measurement_period = {'start': 'unknown',
                               'stop': 'unknown',
                               'group': group,
