@@ -243,6 +243,7 @@ def get_df_W_offline_and_online(_df_V_train, meta_data_train, meta_data_test, mo
                                   right_index=True)
     df_W_train_with_OM['cluster_label_unique'] = df_W_train_with_OM.groupby(
         ['rotational speed [RPM]', 'torque [Nm]']).ngroup()
+    print(df_W_train_with_OM['cluster_label_unique'])
     #cluster_label_unique_name_mapping = df_W_train_with_OM.groupby('cluster_label_unique').first()[
     #    ['rotational speed [RPM]', 'torque [Nm]']].reset_index()
 
