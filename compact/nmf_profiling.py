@@ -269,7 +269,7 @@ def get_df_W_offline_and_online(_df_V_train, meta_data_train, meta_data_test, mo
             n_index_errors += 1
             om = -1
         """
-        
+        print(group)
         measurement_period = {'start': 'unknown',
                               'stop': 'unknown',
                               'group': group,
