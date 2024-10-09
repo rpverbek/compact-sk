@@ -20,7 +20,6 @@ from compact.util import calculate_roc_characteristics, calc_tpr_at_fpr_threshol
 import glob
 import os
 
-
 previous_value_threshold = 95
 
 
@@ -223,11 +222,17 @@ def show_fingerprints(model, df_V_train, meta_data_train, df_operating_modes):
 
     def make_plot(rpm, torque, run):
         _n_components = df_W.shape[1] - 5
+
+        fontsize = max(10, _n_components * 0.75)
+        fontsize_hm = max(10, _n_components * 0.4)
+
+        fig, ax = plt.subplots(figsize=(_n_components, 4))
         if run == 'Mean over all measurements':
             df_ = df_W[(df_W['rotational speed [RPM]'] == rpm) & (df_W['torque [Nm]'] == torque)]
             df_ = df_[list(range(_n_components)) + ['direction']].groupby('direction').mean()
-            fig, ax = plt.subplots()
-            sns.heatmap(df_, annot=True, fmt=".3f", ax=ax, cmap='Blues', vmin=0, vmax=0.1, cbar=False)
+            # fig, ax = plt.subplots()
+            sns.heatmap(df_, annot=True, fmt=".3f", ax=ax, cmap='Blues', vmin=0, vmax=0.1, cbar=False,
+                        annot_kws={"size": fontsize_hm})
             ax.set_title(f'Vibration fingerprint @ {rpm} rpm, {torque} Nm')
             ax.set_xlabel('component')
         else:
@@ -235,9 +240,9 @@ def show_fingerprints(model, df_V_train, meta_data_train, df_operating_modes):
                        (df_W['torque [Nm]'] == torque) &
                        (df_W['sample_id'] == run)]
             df_ = df_.set_index('direction')
-            fig, ax = plt.subplots(figsize=(8, 4))
+
             sns.heatmap(df_[list(range(_n_components))], annot=True, fmt=".3f", ax=ax, cmap='Blues', vmin=0, vmax=0.1,
-                        cbar=False)
+                        cbar=False, annot_kws={"size": fontsize_hm})
             ax.set_title(f'Measurement {run} @ {rpm} rpm, {torque} Nm')
             ax.set_xlabel('component')
 
@@ -245,6 +250,13 @@ def show_fingerprints(model, df_V_train, meta_data_train, df_operating_modes):
         y_ticks = ax.get_yticklabels()
         new_labels = [label.get_text()[4:] for label in y_ticks]
         ax.set_yticklabels(new_labels)
+
+        ax.tick_params(axis='x', labelsize=fontsize)
+        ax.tick_params(axis='y', labelsize=fontsize)
+
+        ax.title.set_fontsize(fontsize)
+        ax.xaxis.label.set_fontsize(fontsize)
+        ax.yaxis.label.set_fontsize(fontsize)
 
         fig.show()
 
@@ -372,7 +384,11 @@ def plot_ROC_curve(df_cosine):
     fig.show()
 
 
-def plot_weights_interactive(df_W_online, meta_data_test, df_operating_modes):
+def plot_weights_interactive(df_W_online, meta_data_test, df_operating_modes, n_components):
+
+    fontsize = max(10, n_components * 0.75)
+    fontsize_hm = max(10, n_components * 0.4)
+
     def plot_weights(period):
         usid = df_W_online['unique_sample_id'][period]
         df_ = meta_data_test[meta_data_test['unique_sample_id'] == usid]
@@ -380,14 +396,23 @@ def plot_weights_interactive(df_W_online, meta_data_test, df_operating_modes):
         torque = df_['torque [Nm]'].iloc[0]
         operating_mode = df_operating_modes.loc[torque, rpm]
 
-        fig, ax = plt.subplots(figsize=(8, 4))
-        sns.heatmap(df_W_online['W'][period], annot=True, fmt=".3f", ax=ax, cmap='Blues', vmin=0, vmax=0.05, cbar=False)
+        fig, ax = plt.subplots(figsize=(n_components, 4))
+        sns.heatmap(df_W_online['W'][period], annot=True, fmt=".3f", ax=ax, cmap='Blues', vmin=0, vmax=0.05, cbar=False,
+                    annot_kws={"size": fontsize_hm})
 
         ax.set_title(
             f'Derived weights for measurement {period} @ {rpm} rpm, {torque} Nm (operating mode {operating_mode})')
         ax.set_yticklabels(['x', 'y', 'z'], rotation=0)
         ax.set_ylabel('Measurement direction')
         ax.set_xlabel('Component')
+
+        ax.tick_params(axis='x', labelsize=fontsize)
+        ax.tick_params(axis='y', labelsize=fontsize)
+
+        ax.title.set_fontsize(fontsize)
+        ax.xaxis.label.set_fontsize(fontsize)
+        ax.yaxis.label.set_fontsize(fontsize)
+
         fig.show()
 
     possible_periods = sorted(list(df_W_online['unique_sample_id'].index))
