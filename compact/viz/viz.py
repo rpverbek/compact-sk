@@ -419,5 +419,5 @@ def plot_weights_interactive(df_W_online, meta_data_test, df_operating_modes, n_
     controller_period = get_controller({'widget': 'Dropdown',
                                         'options': [(_period, _period) for _period in possible_periods],
                                         'value': possible_periods[0],
-                                        'description': 'Which period'})
+                                        'description': 'Select measurement'})
     interact(plot_weights, period=controller_period)
