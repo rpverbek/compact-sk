@@ -348,7 +348,7 @@ def plot_example_interactive():
 
 
 def plot_ROC_curve(df_cosine):
-    df_cosine = df_cosine[df_cosine.unique_cluster_label != -1]  # removed unknown cluster labels
+    df_cosine = df_cosine[~np.isnan(df_cosine.distance_to_own_cluster_center)]  # removed unknown cluster labels
 
     fig, ax = plt.subplots(figsize=(8, 6))
 
@@ -365,9 +365,9 @@ def plot_ROC_curve(df_cosine):
     # FPR@TPR
     threshold = 0.9
     fpr_at_tpr = calc_fpr_at_tpr_threshold(tpr, fpr, threshold=threshold)
-    ax.plot([0, threshold], [fpr_at_tpr, fpr_at_tpr], color='green', lw=2, linestyle='--',
+    ax.plot([fpr_at_tpr, fpr_at_tpr], [0, threshold], color='green', lw=2, linestyle='--',
             label=f'FPR@TPR={threshold:.2f} = {fpr_at_tpr:.2f}')
-    ax.plot([threshold, threshold], [0, fpr_at_tpr], color='green', lw=2, linestyle='--')
+    ax.plot([0, fpr_at_tpr], [threshold, threshold], color='green', lw=2, linestyle='--')
     # limits
     ax.set_xlim(0.0, 1.0)
     ax.set_ylim(0.0, 1.05)

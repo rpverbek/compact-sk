@@ -220,7 +220,8 @@ def derive_df_orders(df_vib, setup, f, verbose=True):
     return df_orders, meta_data
 
 
-def get_df_W_offline_and_online(_df_V_train, meta_data_train, meta_data_test, model, df_orders_test, ):
+def get_df_W_offline_and_online(_df_V_train, meta_data_train, meta_data_test, model, df_orders_test,
+                                df_operating_modes):
     # extract train vibration measurement periods
 
     df_V_train = _df_V_train.copy()
@@ -241,11 +242,13 @@ def get_df_W_offline_and_online(_df_V_train, meta_data_train, meta_data_test, mo
     # add operating mode (OM)
     df_W_train_with_OM = pd.merge(df_W_train, meta_data_train.drop(columns=['direction']), left_index=True,
                                   right_index=True)
-    df_W_train_with_OM['cluster_label_unique'] = df_W_train_with_OM.groupby(
-        ['rotational speed [RPM]', 'torque [Nm]']).ngroup()
-    print(df_W_train_with_OM['cluster_label_unique'])
-    #cluster_label_unique_name_mapping = df_W_train_with_OM.groupby('cluster_label_unique').first()[
-    #    ['rotational speed [RPM]', 'torque [Nm]']].reset_index()
+    # df_W_train_with_OM['cluster_label_unique'] = df_W_train_with_OM.groupby(
+    #     ['rotational speed [RPM]', 'torque [Nm]']).ngroup()
+
+    df_W_train_with_OM['cluster_label_unique'] = df_W_train_with_OM[['rotational speed [RPM]', 'torque [Nm]']].\
+        apply(lambda x: int(df_operating_modes.loc[int(x[1]), int(x[0])].strip('OM ')), axis=1)
+
+    # print(df_W_train_with_OM['cluster_label_unique'])
 
     cols_ = df_V_train.columns
     band_cols = cols_[cols_.str.contains('band')].tolist()
@@ -260,16 +263,11 @@ def get_df_W_offline_and_online(_df_V_train, meta_data_train, meta_data_test, mo
         rpm = meta_data_test[meta_data_test['unique_sample_id'] ==
                              unique_sample_id]['rotational speed [RPM]'].unique()[0]
         torque = meta_data_test[meta_data_test['unique_sample_id'] == unique_sample_id]['torque [Nm]'].unique()[0]
-        """
         try:
-            om = cluster_label_unique_name_mapping[
-                (cluster_label_unique_name_mapping['rotational speed [RPM]'] == rpm) &
-                (cluster_label_unique_name_mapping['torque [Nm]'] == torque)]['cluster_label_unique'].iloc[0]
+            om = df_operating_modes.loc[torque, rpm]
         except IndexError:
             n_index_errors += 1
             om = -1
-        """
-        print(group)
         measurement_period = {'start': 'unknown',
                               'stop': 'unknown',
                               'group': group,
@@ -288,10 +286,14 @@ def get_df_W_offline_and_online(_df_V_train, meta_data_train, meta_data_test, mo
         df_.groupby('cluster_label_unique')
     }
 
+    # print(fingerprints.keys()[0])
+
     df_W_offline = _extract_vibration_weights_per_measurement_period(train_vibration_measurement_periods,
-                                                                     fingerprints[0].columns, model)
+                                                                     fingerprints[list(fingerprints.keys())[0]].columns,
+                                                                     model)
     df_W_online = _extract_vibration_weights_per_measurement_period(test_vibration_measurement_periods,
-                                                                    fingerprints[0].columns,  model)
+                                                                    fingerprints[list(fingerprints.keys())[0]].columns,
+                                                                    model)
     return df_W_offline, df_W_online, fingerprints, test_vibration_measurement_periods_meta_data 
 
 
@@ -306,8 +308,8 @@ def get_pivot_table(df_W_online, fingerprints, test_vibration_measurement_period
 
     distance_to_own_cluster_center = []
     for idx, row in df_cosine.iterrows():
-        om = row['unique_cluster_label']
-        if om != -1:
+        om = int(row['unique_cluster_label'].strip('OM '))
+        if om in row.index:
             distance_to_own_cluster_center.append(row[om])
         else:
             distance_to_own_cluster_center.append(np.nan)
